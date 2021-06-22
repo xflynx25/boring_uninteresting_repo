@@ -1,10 +1,10 @@
-# This is the title
+# Fantasy Premier League AI
 
 **Version 1.0.0**
 
 ## In a Picture
 
-![File Relations Picture](https://github.com/[xflynx25]/[boring_uninteresting_repo]/blob/[master]/Project_Diagram.png?raw=true "File Relations Visualizer")
+![File Relations Picture](https://github.com/xflynx25/boring_uninteresting_repo/blob/main/Project_Diagram.png?raw=true "File Relations Visualizer")
 
 
 ---
