@@ -1,0 +1,15 @@
+*) Personalities
+    -- Fill out the fields to construct a particular bot instance. This involves team information (for login), folder for saving on your computer, names of the model suites used for predictions, and several controls over parameters.
+
+*) Constants
+    -- Put in your information for:
+        1) emails for chip notifications
+        2) fpl login for web scraping
+        3) rapid api key for getting odds data
+        4) Path to datahub dataset for 2016-19 building database
+        5) Path to root folder you want things to be saved in 
+        6) Add any weeks to this if data gets corrupted (unlikely)
+
+*) Installation & Setup (Future)
+    1) Fill out the fields in the config files 
+    2) Run the setup.py
