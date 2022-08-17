@@ -1,0 +1,13 @@
+*FPL_Remote/*
+Personalities.py
+*__pycache__
+C:*
+constants.py
+descriptions/*
+fplenv.yml
+historicalPersonalitiesDump.py
+notes.txt
+private_versions/*
+team_bot*
+unused/*
+FormatConverter.py
