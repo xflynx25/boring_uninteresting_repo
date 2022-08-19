@@ -1,0 +1,22 @@
+name: fplenv
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - aiohttp
+  - beautifulsoup4
+  - jellyfish
+  - matplotlib
+  - matplotlib-base
+  - numpy
+  - numpy-base
+  - numpydoc
+  - pandas
+  - pandoc
+  - pandocfilters
+  - scikit-image
+  - scikit-learn
+  - scipy
+  - seaborn
+  - tornado
+prefix: <INSERT anaconda-filepath>
