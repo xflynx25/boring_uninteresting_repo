@@ -1,8 +1,9 @@
-FPL_Remote/*
+FPL_Remote*
 Personalities.py
-*__pycache__
-C*Users*
+*__pycache__*
+**/FPL_Datasets/**
 constants.py
+malleable_constants.py
 descriptions/**
 fplenv.yml
 historicalPersonalitiesDump.py

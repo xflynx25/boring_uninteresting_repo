@@ -1,0 +1,5 @@
+8/16/21 -- 
+* Overseer support for changing models throughout season
+* Overseer pulls gw and chip stats for use in wildcard predictions
+* prices and health are recorded every week
+* 

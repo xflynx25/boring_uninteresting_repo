@@ -1,3 +1,4 @@
+from constants import STRING_SEASON
 import importlib 
 import Accountant_2helpers 
 importlib.reload(Accountant_2helpers)
@@ -16,12 +17,14 @@ def missing_numbers(listlike, top):
     return missing
 
 #returns dictionary that takes api_id as key and returns string form
+# 1 REQUEST
 def api_id_to_teamname_converter(league_id):
     return team_id_converter_api(league_id)
 
 #returns dictionary that takes id as key and returns string form
 def id_to_teamname_converter(season):
     url = VASTAAV_ROOT + str(season) + '/teams.csv'
+    print(url)
     df = get_df_from_internet(url)[['id', 'name']]
     converter = {}
     for _, row in df.iterrows():
@@ -47,21 +50,22 @@ def api_to_db_id_converter(api_converter, db_converter):
         api_id = item[0]
         fullname = item[1]
         api_codename = fullname[:3] + fullname[-3:]
-        for item in db_converter.items():
-            name = item[1]
+        for item2 in db_converter.items():
+            name = item2[1]
+            #print("Match::: ", fullname, "  w.  ", name) # if we need to make sure working
             db_codename = name[:3] + name[-3:]
             if api_codename == db_codename:
-                converter[api_id] = item[0]
+                converter[api_id] = item2[0]
                 break
             if fullname[:3] == 'Tot': #spurs needs to be edited
                 api_codename_2 = 'Spuurs'
                 if api_codename_2 == db_codename:
-                    converter[api_id] = item[0]
+                    converter[api_id] = item2[0]
                     break
             if fullname[-6:] == 'United': #fixing up man united vs utd
                 api_codename_2 = api_codename[:3] + 'Utd'
                 if api_codename_2 == db_codename:
-                    converter[api_id] = item[0]
+                    converter[api_id] = item2[0]
                     break
                 
     if len(converter) != 20:
@@ -115,6 +119,7 @@ def bake_current_stats_from_raw(home_id, away_id, raw_odds):
 # for use in odds df, making up for bad api
 # takes in premier league id, current state of odds_df, fixtures_df, current_gw
 # returns concatenated df of the odds information of previously missing stuff
+# len(need_fixtures) REQUESTS
 def individual_game_odds(premier_league, final_odds, fixtures_df, current_gw, what_weeks='equal'):
     if what_weeks == 'equal':
         unique_dates_this_week = fixtures_df.loc[fixtures_df['gw']==current_gw]['kickoff_time'].apply(lambda x: x[:10]).unique()
@@ -149,7 +154,7 @@ def online_raw_player_gw(season, gw):
         'penalties_missed','penalties_saved', 'saves','minutes','total_points'] 
     playerTRANSFERstats = ['selected','transfers_in','transfers_out','transfers_balance']
     #big_error_keys = ['errors_leading_to_goal', 'errors_leading_to_goal_attempt']
-
+ 
     print('in online_raw_player_gw... season= ', season, 'gw= ', gw)
     stitching_a_404 = False
     try: 
@@ -157,7 +162,7 @@ def online_raw_player_gw(season, gw):
         gw_df = get_df_from_internet(filename)
     except Custom404Exception:
         backup_datacollection_path = MANUAL_VASTAAV_ROOT + 'gw' + str(gw) + '.csv'
-        previous_player_raw = pd.read_csv(DROPBOX_PATH + r'\player_raw.csv', index_col=0)
+        previous_player_raw = pd.read_csv(DROPBOX_PATH + 'player_raw.csv', index_col=0)
         manually_replace_vastaav_this_week(gw, backup_datacollection_path, previous_player_raw)
         gw_df = pd.read_csv(backup_datacollection_path, index_col=0)
         print('backup collection seemed to work')
@@ -216,9 +221,13 @@ def online_processed_player_season(raw_players, form_lengths, forward_pred_lengt
     
     '''now we process player form stats'''
     processed_season_df = pd.DataFrame()
-    for player in raw_players['element'].unique():
+    nplayers = len(raw_players['element'].unique())
+    print('number of players ', nplayers)
+    for i, player in enumerate(raw_players['element'].unique()):
+        print('Player# ', i)
         player_df = raw_players.loc[raw_players['element']==player]
         if player_df.shape[0] == 0: #sometimes very new players will not have any stats yet and will throw us errors. We don't have to consider them
+            print('skipping them')
             continue
         
         #print(player_df['name'])
@@ -354,7 +363,7 @@ def online_opponent_datacollect(year_df, forward_pred_lengths, fixtures_df):
 
 # whenever we read anything in we just want to get rid of the past weeks so we don't create a messed up db
 def safely_get_database(db, current_gw):
-    players = pd.read_csv(db, index_col=0)
+    players = safe_read_csv(db)
     if players.shape[0] > 0: # skip if just first gameweek so no error
         players = players.loc[players['gw']<current_gw] #don't want to fill more than once 
     return players
@@ -428,13 +437,15 @@ def api_to_patch_converter(api_names, patch_database):
 def patch_odds(odds_df, database, fixtures_df, current_gw):
     print('in patch odds')
     '''go from fixture id to hometeam, awayteam, date'''
-    SEASON = 2020
-    season = '2020-21'
+    SEASON = INT_SEASON_START
+    season = STRING_SEASON
+    print(season, SEASON)
     premier_league = get_premier_league_id(SEASON) 
     vastaav_converter = id_to_teamname_converter(season)# db id --> namestring
     api_converter = api_id_to_teamname_converter(premier_league) #teamname_to_id_converter(season) # api id --> namestring
     super_converter = api_to_db_id_converter(api_converter, vastaav_converter) #api id --> db id
     patch_converter = api_to_patch_converter(list(api_converter.values()), database)
+
 
     '''for each gameday already played we get all ids'''
     new_rows = []
@@ -443,27 +454,34 @@ def patch_odds(odds_df, database, fixtures_df, current_gw):
     kickoff_dates = kickoff_times.apply(lambda x: x[:10]).unique()
     for kickoff_time in kickoff_dates:
         date = kickoff_time[:10]
+        print('date is ', date)
         for fix in list(get_fixture_ids(premier_league, date)): #otherwise start getting async stuff
             fixture_id = fix[0]
             homeName = api_converter[fix[1]]
             awayName = api_converter[fix[2]]
             if fixture_id not in odds_df['fixture_id'].to_list(): #haven't got already
+                print('bad fix id is ', fixture_id)
 
                 # get game which matches the fixture id
                 home = patch_converter[homeName]
                 away = patch_converter[awayName]
                 target_match = database.loc[(database['HomeTeam']==home) & (database['AwayTeam']==away)].reset_index(drop=True)
+                print('home/away/match is ', home, away, target_match)
 
                 # if there is no matching value check if it is a rescheduled game using fixtures df
                 # if not... raise exception because then there is a match we are missing
+                # this section is seeing whether the api is passing us stale data about games on this date...
+                    # or if we are actually missing dtaa still for a real game (real defined by fix_df)
                 if target_match.shape[0] == 0: 
                     home = super_converter[fix[1]]
                     away = super_converter[fix[2]]
                     match = fixtures_df.loc[(fixtures_df['team']==home)&(fixtures_df['was_home']==1)&(fixtures_df['opponent']==away)]
-                    earliest_possible = min(kickoff_times)
-                    print(match['kickoff_time'].iloc[0], earliest_possible, 'we are in a possible exception scenario if 2 > 1')
+                    earliest_possible = max(kickoff_dates)
+                    print(match['kickoff_time'], earliest_possible, 'we are in a possible exception scenario if 2 > 1')
                     if match['kickoff_time'].iloc[0] < earliest_possible: #otherwise its a rescheduled game
-                        raise Exception("No backup data for this match: " + str(fixture_id))
+                        print("No backup data for this match: " + str(fixture_id))
+                        continue
+                        #raise Exception("No backup data for this match: " + str(fixture_id))
                     else:
                         continue
 
@@ -514,6 +532,7 @@ def make_team_fantasy_point_concessions(current_gw, raw_players, fixtures_df):
     return final
 
 # turn the many concession stats into just the one representing their position
+# we must keep in mind there will be rows where the concessions have been averaged (dgw) and when they are nan (blank)
 def resolve_concessions(total):
     temp_og = get_columns_containing(['concession_pos_1'], total)
     og_column_names = get_columns_containing(['FIX'], temp_og).columns
@@ -625,3 +644,27 @@ def manually_replace_vastaav_this_week(gw, filepath, previous_player_raw):
     df_final = pd.merge(past_processed_meta,performance_stats, on='element')
     df_final.to_csv(filepath)
     print('put everything into the filepath, here is the head of the df and the shape\n', df_final.shape, df_final.head(), df_final.columns)
+
+
+#@param: season int
+#@do: get the team converter and save it to the seasons folder for future reference df ['id','name']
+def get_and_save_teamconverter(season):
+    century = 20
+    hypenated_season = f'{century}{str(season)[:2]}-{str(season)[2:]}'
+    try:
+        converter = id_to_teamname_converter(hypenated_season)
+    except:
+        driver = webdriver.Chrome() #webdriver.Firefox()
+        driver.get(f"https://www.skysports.com/premier-league-table/{hypenated_season[:4]}")
+        time.sleep(3)
+        soup = BeautifulSoup(driver.page_source, 'html.parser')        
+        teams = []
+        for link in soup.find_all('a'):
+            if link.has_attr('class') and "standing-table__cell--name-link" in link['class']:
+                teams.append(link.get_text())
+        teams.sort()
+        converter = {i+1:team for (i,team) in enumerate(teams)}
+        driver.close()
+    df = pd.DataFrame(list(converter.items()), columns=['id', 'name'])
+    path = DROPBOX_PATH + f"Our_Datasets/{hypenated_season}/team_converter.csv"
+    df.to_csv(path)

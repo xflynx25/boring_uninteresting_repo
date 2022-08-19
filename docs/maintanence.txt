@@ -1,0 +1,17 @@
+Turn on mykindemailhelper less secure apps every 2 months or so
+
+pull the top players info at the end of every season
+
+run the new models
+
+check email for chips
+
+make sure turning computer on to run itself
+
+make sure api is not expiring, and the api has not updated the specifications
+
+make sure vastaav is still collecting data
+
+Might need to go in and run patch=True on update_odds_df() in Accountant. Right now, there is no way to determine whether
+    we have missed a week of data and just have many canceled games data recorded - or if it is a normal situation. Should 
+    eventually correct itself once the excess games start getting played

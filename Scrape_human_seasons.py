@@ -7,12 +7,13 @@
 # give some time between requests so don't get fpl busy to making captcha
 
 from Requests import proper_request
-from constants import DROPBOX_PATH, LEAGUE_FETCHING_LOGIN_CREDENTIALS, LEAGUE_FETCHING_NUM_PLAYERS_ON_PAGE
+from general_helpers import login_to_website, logout_from_website
+from constants import DROPBOX_PATH, LEAGUE_FETCHING_LOGIN_CREDENTIALS, LEAGUE_FETCHING_NUM_PLAYERS_ON_PAGE, WILDCARD_2_GW_START
 from selenium import webdriver
 driver = webdriver.Chrome() #webdriver.Firefox()
 HOSTNAME = 'https://fantasy.premierleague.com'
 destination_folderpath = DROPBOX_PATH + "Human_Seasons/2021/"
-login_url = HOSTNAME
+LOGIN_URL = HOSTNAME
 EMAIL, PASSWORD, TEAM_ID = LEAGUE_FETCHING_LOGIN_CREDENTIALS
 
 NUM_PLAYERS_ON_PAGE = LEAGUE_FETCHING_NUM_PLAYERS_ON_PAGE
@@ -66,30 +67,6 @@ def get_soup_and_oneclick_soup(url, click_text, wait_time = 1):
 def make_folder_safe(name):
     if not os.path.exists(name):
         os.makedirs(name)
-
-
-USERNAME_ID = "loginUsername"
-PASSWORD_ID = "loginPassword"
-SUBMIT_BUTTON_CLASSES = ["ArrowButton-thcy3w-0","hHgZrv"]
-def login_to_website():
-    driver.get(login_url)
-    time.sleep(.25)
-    driver.find_element_by_id(USERNAME_ID).send_keys(EMAIL)
-    driver.find_element_by_id(PASSWORD_ID).send_keys(PASSWORD)
-    driver.find_element_by_xpath("//button[@type='submit']").submit()
-    time.sleep(2)
-
-def logout_from_website():
-    driver.get(login_url)
-    time.sleep(.25)
-    try:
-        driver.find_element_by_link_text('Sign Out').click()
-        time.sleep(1)
-    except:
-        driver.find_element_by_class_name("Dropdown__MoreButton-qc9lfl-0").click()
-        time.sleep(2)
-        driver.find_element_by_link_text('Sign Out').click()
-        time.sleep(1)
 
 
 def has_classes(thing, classes):
@@ -194,10 +171,11 @@ def get_elements_from_namestrings_and_team(gw, bad_tuples, name_team_pos_df, vis
 
 
 """ ### DRIVER FUNCTIONS ### """
+# might break if someone joined late, we are requesting a page for the event for every gw 
 # for a season username -> userplace & starting 15, when chips
 # userplace, gw, inb (set), outb (set), chip (0-4), c, vc, bench (set)
 def get_top_players(name_team_df, num_players, save_interval = 500, visualize=False, league_name = 'Overall', start_at_rank=1):
-    login_to_website()
+    login_to_website(driver, LOGIN_URL, EMAIL, PASSWORD)
     soup = get_soup(HOSTNAME + '/leagues')
     next_url = ''
     for link in soup.find_all('a'):
@@ -258,6 +236,47 @@ def get_top_players(name_team_df, num_players, save_interval = 500, visualize=Fa
             df.loc[:,'rank'] = rank
             mdf.loc[rel_rank, ['rank', 'username', 'total_points']] = rank, usnm, tt_pts
 
+
+            ### GET CHIP STUFF
+            free_hit_gw = 0
+            not_succeed, special_mistakes = True, 0
+            while not_succeed and special_mistakes < 5:
+                try:
+                    soup = get_soup(player_base + 'history')
+                    for table in soup.find_all('table'): 
+                        if has_classes(table,["Table-ziussd-1"]):
+                            to_find = ['date', 'name', 'active']
+                            for th in table.find_all('th'):
+                                this_text = th.get_text().lower()
+                                for it in to_find:
+                                    if it in this_text:
+                                        to_find.remove(it)
+                                        break
+                            if len(to_find) == 0:
+                                for chip_sec in table.find_all('tr'): # maybe an error somewhere around here causing some wc2 issues like higher on the page there is another tr with Wild in it
+                                    for line in chip_sec.find_all('td'):
+                                        if 'Free' in line.get_text():
+                                            this_chip = 'free_hit'
+                                        elif 'Wild' in line.get_text():
+                                            this_chip = 'wildcard1'
+                                        elif 'Bench' in line.get_text():
+                                            this_chip = 'bench_boost'
+                                        elif 'Triple' in line.get_text():
+                                            this_chip = 'triple_captain'
+                                    for link in chip_sec.find_all('a'):
+                                        this_gw = int(link.get_text()[2:])
+                                        if this_chip == 'free_hit':
+                                            free_hit_gw = this_gw
+
+                                    if this_chip == 'wildcard1' and this_gw >= WILDCARD_2_GW_START:
+                                        this_chip = 'wildcard2'
+                                    mdf.loc[rel_rank, this_chip] = this_gw
+                
+                    not_succeed = False
+                except:
+                    special_mistakes += 1
+
+
             ### WEEKLY INFO
             players_rn = []
             for gw in range(1,LAST_GW + 1):
@@ -271,7 +290,11 @@ def get_top_players(name_team_df, num_players, save_interval = 500, visualize=Fa
                         #list_soup = get_oneclick_soup(player_base + f'event/{gw}', "List View", wait_time = 1)
                         soup, list_soup = get_soup_and_oneclick_soup(player_base + f'event/{gw}', "List View", wait_time = 1)
 
-                        players_prev = players_rn.copy()
+                        ''' for the free hit we want to return the team back to how it was ''' 
+                        if gw == free_hit_gw + 1:
+                            players_rn = players_prev.copy()
+                        else:
+                            players_prev = players_rn.copy()
                         teams, intermediate_names, positions, influences, bpss = [],[],[],[],[]
                         for player in list_soup.find_all('tr'):
                             if has_classes(player, ["ElementTable__ElementRow-sc-1v08od9-3"]):#daily --> ,"kGMjuJ"]):
@@ -355,48 +378,11 @@ def get_top_players(name_team_df, num_players, save_interval = 500, visualize=Fa
 
                         df.loc[gw-1, ['captain', 'vcaptain']] = specials[4:]
                         df.loc[gw-1, ['bench1','bench2','bench3','bench4']] = specials[:4]
-                        sdfs.append(df)
-                        #print(mdf.loc[gw-1, :])
                         not_succeed = False
                     except:
                         special_mistakes += 1
+            sdfs.append(df)
 
-
-            ### GET CHIP STUFF
-            not_succeed, special_mistakes = True, 0
-            while not_succeed and special_mistakes < 5:
-                try:
-                    soup = get_soup(player_base + 'history')
-                    for table in soup.find_all('table'):
-                        if has_classes(table,["Table-ziussd-1"]):
-                            to_find = ['date', 'name', 'active']
-                            for th in table.find_all('th'):
-                                this_text = th.get_text().lower()
-                                for it in to_find:
-                                    if it in this_text:
-                                        to_find.remove(it)
-                                        break
-                            if len(to_find) == 0:
-                                for chip_sec in table.find_all('tr'):
-                                    for line in chip_sec.find_all('td'):
-                                        if 'Free' in line.get_text():
-                                            this_chip = 'free_hit'
-                                        elif 'Wild' in line.get_text():
-                                            this_chip = 'wildcard1'
-                                        elif 'Bench' in line.get_text():
-                                            this_chip = 'bench_boost'
-                                        elif 'Triple' in line.get_text():
-                                            this_chip = 'triple_captain'
-                                    for link in chip_sec.find_all('a'):
-                                        this_gw = int(link.get_text()[2:])
-
-                                    if this_chip == 'wildcard1' and this_gw > 19:
-                                        this_chip = 'wildcard2'
-                                    mdf.loc[rel_rank, this_chip] = this_gw
-                
-                    not_succeed = False
-                except:
-                    special_mistakes += 1
 
         if len(sdfs) > 0:
             print('Saving !!!')
@@ -404,11 +390,11 @@ def get_top_players(name_team_df, num_players, save_interval = 500, visualize=Fa
             make_folder_safe(this_folder)
             pd.concat(sdfs, axis=0).reset_index(drop=True).to_csv(this_folder + 'weekly.csv')
             mdf.to_csv(this_folder + 'meta.csv')
-    logout_from_website()
+    logout_from_website(driver, LOGIN_URL)
 
 def get_all_private_league_names():
     leagues = []
-    login_to_website()
+    login_to_website(driver, LOGIN_URL, EMAIL, PASSWORD)
     soup = get_soup(HOSTNAME + '/leagues')
     for div in soup.find_all('div'):
         if has_classes(div, ["Panel__StyledPanel-sc-1nmpshp-0"]):
@@ -416,7 +402,7 @@ def get_all_private_league_names():
                 if 'private classic leagues' in h4.get_text().lower():
                     league = div.find_all('a')[0].get_text()
                     leagues.append(league)
-    logout_from_website()
+    logout_from_website(driver, LOGIN_URL)
     return leagues
 
 if __name__ == '__main__':

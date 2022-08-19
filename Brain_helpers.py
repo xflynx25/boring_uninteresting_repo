@@ -10,7 +10,7 @@ from collections import Counter
 from constants import DROPBOX_PATH
 import time
 import random
-from general_helpers import get_columns_containing
+from general_helpers import get_columns_containing, safer_eval
 
 
 
@@ -51,9 +51,9 @@ def transfer_option_names(scoreboard, name_df, num_transfers=0):
         print('Option Number ', index + 1)
         players_in = []
         players_out = []
-        for player_in in row['inbound'][0]:
+        for player_in in safer_eval(row['inbound']):
             players_in.append(name_df.loc[name_df['element']==player_in]['name'].tolist()[0])
-        for player_out in row['outbound'][0]:
+        for player_out in safer_eval(row['outbound']):
             players_out.append(name_df.loc[name_df['element']==player_out]['name'].tolist()[0])
         print('players in= ', players_in, 'players out= ', players_out)
 
@@ -70,7 +70,7 @@ def filter_transfering_healthy_players(scoreboard, team_players, allowed_healths
     injured_dict = {}
     for index, row in scoreboard.iterrows():
         injured = 0
-        for player in row['outbound'][0]:
+        for player in safer_eval(row['outbound']):
             if player in injured_on_my_team:
                 injured += 1
         injured_dict[index] = injured 
@@ -85,6 +85,15 @@ def get_bench_order(bench_df):
     no_keepers = bench_df.loc[bench_df['position']!=1]
     sorted_bench = no_keepers.sort_values('expected_pts', ascending=False)
     return sorted_bench['element'].tolist()
+
+# order the entire bench with keeper at position 0
+# @return: list descending
+def get_bench_order_with_keeper(bench_df):
+    no_keepers = bench_df.loc[bench_df['position']!=1]
+    sorted_bench = no_keepers.sort_values('expected_pts', ascending=False)
+    field_bench = sorted_bench['element'].tolist()
+    keeper = bench_df.loc[~bench_df['element'].isin(field_bench)]['element'].to_list()
+    return keeper + field_bench
 
 # random shuffles on the wildcard to encourage proper convergence
 def randomly_shuffle_n_players(team_players, transfer_market, sell_value, bench_factor, n, how_often):
@@ -169,7 +178,6 @@ def kill_irrelevants_and_sort(transfer_market, bad_players, allowed_healths, max
 #@return: list of starters, list of bench players 
 def get_starters_and_bench(team_players):
     team_players = team_players.sort_values('expected_pts',ascending=False).reset_index(drop=True)
-
     keepers = team_players.loc[team_players['position']==1]['element'].tolist()
     full = [ keepers[0] ]
     bench = [ keepers[1] ]
@@ -348,7 +356,8 @@ def score_transfers_v2(pos_ordered_pts, op_key, transfer_list, point_deltas, ben
 
 ''' ################# MAIN SEARCH FUNCTION ###############''' 
 # bottleneck is computing the starters 
-# 4 transfers in 19s, 5in 5min, 6 in <1.5hours
+# 3 transfers in 10s, 4 transfers in (19s - 5 minutes), 5in 5min, 6 in <1.5hours 
+    # the ranges are if it is obvious to if there are no good transfers
 def search_v2(transfer_market, team_players, sell_value, num_transfers, num_options, bench_factor, protected_players):
     starters, bench = get_starters_and_bench(team_players)
     # trans and teams as positional dicts 
@@ -389,7 +398,7 @@ def search_v2(transfer_market, team_players, sell_value, num_transfers, num_opti
         if start_index >= market_size: #error prevention case
             return scoreboard, True
 
-        if n == 0: #base case 
+        if n == 0: #base case
             min_delta = scoreboard['delta'].iloc[-1]
             fail_heuristic = False
             """RETHINK"""
@@ -402,9 +411,10 @@ def search_v2(transfer_market, team_players, sell_value, num_transfers, num_opti
             elif not quick_fail:
                 inb = set([x[1] for x in transfer_list])
                 outb = set([x[0] for x in transfer_list])
-                scoreboard.iloc[-1,:] = [inb], [outb], delta # should just replace last row
+                scoreboard.iloc[-1,:] = str(inb), str(outb), delta # should just replace last row
+                print("New guy on scoreboard: ", str(inb), str(outb), delta)
                 scoreboard = scoreboard.sort_values('delta',ascending=False).reset_index(drop=True)
-                
+                #scoreboard.sort_values('delta',ascending=False, inplace=True).reset_index(drop=True)
             return scoreboard, fail_heuristic
 
 
@@ -474,7 +484,7 @@ def search_v2(transfer_market, team_players, sell_value, num_transfers, num_opti
         return scoreboard, fail_heuristic
     
     
-    init_scoreboard = pd.DataFrame( [[[],[],0]] * num_options, columns= ['inbound','outbound','delta'] )
+    init_scoreboard = pd.DataFrame( [['set()','set()',0]] * num_options, columns= ['inbound','outbound','delta'] , dtype=object)
     scoreboard, _ = search_rec(init_scoreboard, root_outbound_order, [], num_transfers, 0, 0, initial_team_vector, [],False)
     #print("Price Fails: ", TOTAL_PRICE_FAILS, "Team Fails: ", TOTAL_TEAM_FAILS,\
     #    "Score Checks: ", TOTAL_SCORE_CHECKS, "Position Immediate Failures: ", TOTAL_POS_FAIL_IMMEDIATELY)

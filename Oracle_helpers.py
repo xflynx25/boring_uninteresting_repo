@@ -4,7 +4,8 @@ import math
 from RandomForest import randomForestRegression
 import pickle
 from general_helpers import drop_columns_containing, get_columns_containing
-
+from constants import MAX_FORWARD_CREATED
+import joblib
 
 # players that play less than this many minutes in the whole season will be dropped
 # this is with the goal of reducing these players filled with 0s on 0s, that unnecessarily
@@ -64,15 +65,47 @@ def undo_one_hot_the_positions(df):
     return df
 
 
+"""
+# Should just be dumping a binary
 def save_model(model, filename):
     pickle.dump(model, open(filename, 'wb'))
 
 
-def load_model(filename):
-    return pickle.load(open(filename, 'rb'))
+# There have been some issues loading these pickles,  
+##### _pickle.UnpicklingError: invalid load key, '\x01'.
+# but it seems that loading them with joblib can avoid 
+# this problem and load it exactly correctly
+#
+# adding verify param to be function to pass the loaded object to 
+# to make sure we are loading what we are expecting (ex. check that it is a tuple size 2)
+def load_model(filename, verify_func=lambda x: True):
+    try:
+        data = pickle.load(open(filename, 'rb'))
+    except:
+        data = joblib.load(filename)
+        print('had to use joblib')
+
+    if not verify_func(data):
+        raise Exception("Loaded data is not passing the test")
+    
+    return data
+
+"""
+
+"""NEW SAVE AND LOAD MODEL, WE WILL BE USING JOBLIB & CONSISTANT PYTHON VERSION AND CONDA ENV"""
+# Should just be dumping a binary
+def save_model(model, filename):
+    joblib.dump(model, filename)
 
 
+# @param: verify func will check that we don't have corrption
+def load_model(filename, verify_func=lambda x: True):
+    data = joblib.load(filename)
 
+    if not verify_func(data):
+        raise Exception("Loaded data is not passing the test")
+    
+    return data
 
 
 ### NEW HELPERS ####       
@@ -116,18 +149,33 @@ def get_sets_from_name(name):
         opponents.add(int(let))
     return form, opponents, guess
 
-def train_rf_with_threshold(X,y,n,threshold, crossval=False, num_rounds=2, metric='mae'):
+# I believe the original idea was to use thresholds but now we use a main sequence to do crossval descent
+def train_rf_with_threshold(X,y,n,threshold, crossval=False, num_rounds=2, metric='mse', n_starter_cols=None):
 
     # bootstrap cv with mse/mae as train/eval metrics. Lowest cve are features chosen
     # threshold should be a list if we are doing crossval
     # keys num_features 
+
+    def get_good_feature_columns_threshold(xx, yy, thresh): #problem is this isn't a descent so features might not be best
+        # train 2 models 100 trees on full, cut features below threshold in both
+        good_features_1 = randomForestRegression(xx, yy, 100).feature_importances_ > thresh
+        good_features_2 = randomForestRegression(xx, yy, 100).feature_importances_ > thresh
+        good_features = good_features_1 | good_features_2
+        return [col for col, good in zip(xx.columns, good_features) if good]
+
     if crossval:
         round_splits = [np.random.rand(X.shape[0]) < 0.8 for i in list(range(num_rounds))]
         scores = {}
         features = {}
-        main_seq = get_main_sequence(len(X.columns.to_list()))
+        n_cols = len(X.columns.to_list())
+        if n_starter_cols is not None and n_starter_cols < n_cols:
+            n_cols = n_starter_cols
+
+        main_seq = get_main_sequence(n_cols)# if type(threshold != list) else [int(threshold[i]*n_cols) for i in range(len(threshold))]
         while True: ###
             
+            #if type(threshold) == list:
+            #    pass
             if scores == {}:
                 feature_options, num_features = X.columns, main_seq[0]
             else:
@@ -137,7 +185,8 @@ def train_rf_with_threshold(X,y,n,threshold, crossval=False, num_rounds=2, metri
 
             X_prev = X[feature_options]
             feature_importances = randomForestRegression(X_prev, y, 100).feature_importances_ 
-            good_features = get_good_features(feature_options, feature_importances, num_features)        
+            good_features = get_good_features(feature_options, feature_importances, num_features) 
+                 
             X_rnd = X[good_features] 
 
 
@@ -150,7 +199,7 @@ def train_rf_with_threshold(X,y,n,threshold, crossval=False, num_rounds=2, metri
                     err = np.mean(np.abs((model.predict(Xtest) - ytest)))
                 if metric == 'mse':
                     err = np.mean(np.square((model.predict(Xtest) - ytest)))
-                #print('round mae error for threshold=', alpha, ' :  ', round(err, 5))
+                print('round mae error for num_features=', num_features, ' :  ', round(err, 5))
                 error += err / num_rounds
 
             print('avg ',str(metric),' error for ', num_features,' features:  ', round(error,5))
@@ -161,12 +210,8 @@ def train_rf_with_threshold(X,y,n,threshold, crossval=False, num_rounds=2, metri
         chosen_features = features[best_index]
 
 
-    if not crossval: #problem is this isn't a descent so features might not be best
-        # train 2 models 100 trees on full, cut features below threshold in both
-        good_features_1 = randomForestRegression(X, y, 100).feature_importances_ > threshold
-        good_features_2 = randomForestRegression(X, y, 100).feature_importances_ > threshold
-        good_features = good_features_1 | good_features_2
-        chosen_features = [col for col, good in zip(X.columns, good_features) if good]
+    if not crossval: 
+        chosen_features = get_good_feature_columns_threshold(X, y, threshold)
 
     print("Original: ", X.columns.size, "   New: ", len(chosen_features))
         
@@ -191,19 +236,28 @@ def is_useful_model(key, gw):
     return True
 
 def get_backward(row, backward_ops, forward):
-    # first dealing with the FIX being nan canceling out the second part 
+    
     bad_columns = []
-    for i in range(forward + 1, 10):
+    # DEALING WITH THE FACT THAT IN PREVIOUS SEASONS WE HAVE TOTAL_POINTS_AND_MINUTES_COLUMNS 
+    bad_columns += [f'_N{x}' for x in range(1, 38)]
+
+    # first dealing with the FIX being nan canceling out the second part 
+    for i in range(forward + 1, MAX_FORWARD_CREATED+1):
         bad_columns.append('FIX' + str(i))
+    # also deal with the SALOC being nan
+    bad_columns.append('_SALOC')
     row = drop_columns_containing(bad_columns, row)
+    
 
     backward = 0
     for max_past in backward_ops:
-        if (row.isnull().values).sum() > 0:
-            row = drop_columns_containing(['_L' + str(max_past)], row)
-        else:
+        row = drop_columns_containing(['_L' + str(back) for back in range(max_past+1, MAX_FORWARD_CREATED+1)], row)
+        if (row.isnull().values).sum() == 0:
             backward = max_past 
             break
+        else:
+            bad_cols = [row.columns[i] for i in range(len(row.columns)) if (row.isnull().values)[0][i]]
+            #print(bad_cols)
     return backward
 
 def long_term_benchwarmer(row):
@@ -256,10 +310,10 @@ def get_good_features(feature_options, feature_importances, num_features):
     good_features = [feature_options[i] for i in list(range(feature_importances.size)) if feature_importances[i] >= alpha]
     return good_features
 
-def get_main_sequence(n):
+def get_main_sequence(n, drop_rate = 13/20):#4/5) #SPEEDING THINGS UP WITH THE 13/20
     seq = [n]
     while n >=1:
-        n = math.floor(n * 4/5)
+        n = math.floor(n * drop_rate)
         seq.append(n)
     return seq
     
@@ -325,12 +379,22 @@ def get_elements_from_namestrings(bad_players, name_df, visualize=False):
 # if someone doesn't want certain players on their team
 def eliminate_players(full_transfer_market, bad_players, name_df, visualize=False):
     bad_player_elements = get_elements_from_namestrings(bad_players, name_df, visualize=visualize)
+    
+    """
+    print('indicator1')
     for bad_player in bad_player_elements:  
         man = full_transfer_market.loc[full_transfer_market['element']==bad_player]
+        time.sleep(2)
+        print('indicator2')
         man.loc[:, 'expected_pts_full'] = 0
         man.loc[:, 'expected_pts_N1'] = 0
+        time.sleep(2)
+        print('indicator3')
         full_transfer_market = full_transfer_market.loc[full_transfer_market['element']!=bad_player]
         full_transfer_market = pd.concat([full_transfer_market, man], axis=0)
+    """
+        
+    full_transfer_market.loc[full_transfer_market['element'].isin(bad_player_elements), ['expected_pts_full','expected_pts_N1']] = 0
     return full_transfer_market
 
 
@@ -356,9 +420,7 @@ def save_market(current_gw, transfer_market, path):
     except:
         df = pd.DataFrame()
 
-    gw_column = np.zeros(shape=(transfer_market.shape[0], 1)) + current_gw
-    gw_column = pd.DataFrame(gw_column, columns=['gw'])
     transfer_market = transfer_market.reset_index(drop=True)
-    gw_and_transfer_market = pd.concat([gw_column, transfer_market], axis=1)
-    final_df = pd.concat([df, gw_and_transfer_market], axis=0)
+    transfer_market.loc[:, 'gw'] = current_gw
+    final_df = pd.concat([df, transfer_market], axis=0)
     final_df.to_csv(path)

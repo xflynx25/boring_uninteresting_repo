@@ -2,6 +2,9 @@
 import pandas as pd
 import math
 import numpy as np
+from selenium import webdriver
+import time
+from bs4 import BeautifulSoup
 
 import importlib 
 import Requests 
@@ -12,7 +15,8 @@ from constants import LAST_GAMEWEEK, VASTAAV_ROOT, DATAHUB, CORE_STATS, NEW_STAT
 from constants import accountant_core as CORE_META 
 from constants import accountant_team as TEAM_META
 from collections import Counter
-from general_helpers import difference_in_days, get_columns_containing, drop_columns_containing
+from general_helpers import difference_in_days, get_columns_containing, drop_columns_containing,\
+    safe_read_csv, get_current_day
 
 
 
@@ -152,8 +156,7 @@ def online_make_player_metadata_df(player_df):
             if wk == 1:
                 value = np.nan
             else:
-                val = df.loc[df['gw']<wk]['value']
-                value = val[val.index[-1]]
+                value = df.loc[df['gw']<wk]['value'].to_numpy()[-1]
             blank = pd.Series([wk, element, team, position, value, 0,0,0,0], index=CORE_META)
             metas.append(blank)
         else: #normal gw or double gw

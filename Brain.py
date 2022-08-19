@@ -15,7 +15,9 @@ from math import pi, tan, exp, factorial
 from random import randint
 from Brain_helpers import kill_irrelevants_and_sort, check_feasibility_and_get_delta,\
     get_points, get_starters_and_bench, find_healthy_best_captains, transfer_option_names, rename_expected_pts,\
-    filter_transfering_healthy_players, get_bench_order, randomly_shuffle_n_players, search_v2
+    filter_transfering_healthy_players, get_bench_order, get_bench_order_with_keeper, randomly_shuffle_n_players,\
+    search_v2, safer_eval
+from constants import WILDCARD_DEPTH_PARAM
 import time
 
 
@@ -31,7 +33,7 @@ def top_transfer_options(transfer_market, team_players, sell_value, num_transfer
     team_players = rename_expected_pts(team_players)
     # sort team players, make empty scoreboard df 
     team_players = team_players.sort_values('expected_pts',ascending=False).reset_index(drop=True)
-    scoreboard = pd.DataFrame( [[[],[],0]] * num_options, columns= ['inbound','outbound','delta'] )
+    scoreboard = pd.DataFrame( [['set()','set()',0]] * num_options, columns= ['inbound','outbound','delta'] )
 
     '''We currently choose there to be n+1 options for same team redundancy, actually no check next line'''
     max_better = num_transfers - 1 # we recognize that this might not be ideal, but it speeds up our processing
@@ -46,6 +48,7 @@ def top_transfer_options(transfer_market, team_players, sell_value, num_transfer
     #####start = time.time()
     scoreboard = search_v2(transfer_market, team_players, sell_value, num_transfers,\
         num_options, bench_factor, protected_players)
+    print(set(scoreboard['delta'].to_numpy()))
     #####print("New Search: ", round(time.time()-start, 8))
     #print(scoreboard)
     return scoreboard
@@ -56,15 +59,16 @@ def top_transfer_options(transfer_market, team_players, sell_value, num_transfer
 # team_players = "
 # value_vector: 3 floats representing relative importance between (score/price), next game, max game deltas ... can also 
 #   include fourth value which is a list containing allowed healths 
+# min_delta: we throw out those that have bad results for the current gw as we will not consider them
 # @return: series with index of inbound, outbound, delta, delta_N1, worth, ####ranking for those 3, and totalRanking
-def choose_top_transfer_n(scoreboard, full_transfer_market, team_players, sell_value, bench_factor, value_vector):
+def choose_top_transfer_n(scoreboard, full_transfer_market, team_players, sell_value, bench_factor, value_vector, min_delta):
     def add_N1_and_worth_columns(row, full_transfer_market, team_players):
         #row = scoreboard_row.copy()
-        inb_players = row['inbound'][0]
+        inb_players = safer_eval(row['inbound'])
         inbound = full_transfer_market.loc[full_transfer_market['element'].isin(inb_players)].drop('expected_pts_full', axis=1)
 
         inbound = rename_expected_pts(inbound)
-        outbound = row['outbound'][0]
+        outbound = safer_eval(row['outbound'])
         players = team_players.drop('expected_pts_full', axis=1)
         players = rename_expected_pts(players)
 
@@ -81,25 +85,39 @@ def choose_top_transfer_n(scoreboard, full_transfer_market, team_players, sell_v
         a,b,c = value_vector[:3]
         if ranking:
             scoreboard['totalRanking'] = a*scoreboard['worthRanking'] + b*scoreboard['delta_N1Ranking'] + c*scoreboard['deltaRanking']
+            scoreboard.drop(['worthRanking', 'deltaRanking', 'delta_N1Ranking'], axis=1)
         else:
             worth_max, n1_max, full_max = top_scores
             scoreboard['totalRanking'] = a*scoreboard['worth']/worth_max + b*scoreboard['delta_N1']/n1_max + c*scoreboard['delta']/full_max
-            
+            scoreboard.drop(['worth', 'delta_N1', 'delta'], axis=1)
 
         winner = scoreboard.sort_values('totalRanking',ascending=False).reset_index(drop=True).iloc[0,:] #best has highest total ranking
         #print(scoreboard)
-        return winner.drop(['totalRanking', 'worthRanking', 'deltaRanking', 'delta_N1Ranking'])
+        return winner.drop(['totalRanking'])
+
+    '''clean up the table for only relevant'''
+    print("Full transfermarket: ", full_transfer_market)
+    all_playas = []
+    for x in scoreboard['outbound'].to_list() + scoreboard['inbound'].to_list():
+        all_playas += [i for i in safer_eval(x)]
+        for playa in set(all_playas):
+            print(f"Player {playa} = full:-: {full_transfer_market.loc[full_transfer_market['element']==playa]['expected_pts_full'].to_numpy()} anand next:-:{full_transfer_market.loc[full_transfer_market['element']==playa]['expected_pts_N1'].to_numpy()}")
+    print('og scoreboard\n', scoreboard)
 
 
     scoreboard = scoreboard.loc[scoreboard['delta']>0] #drop extra rows in the case of not enough satisfiable transfers
     if scoreboard.shape[0] == 0: #already perfect team
+        print('already perfect team')
         return pd.Series()
-
     if len(value_vector) > 3: #means we want to get rid of our injured players
         scoreboard = filter_transfering_healthy_players(scoreboard, team_players, value_vector[3])
-
     FULL_SCOREBOARD = scoreboard.apply(lambda x: add_N1_and_worth_columns(x, full_transfer_market, team_players),axis=1, result_type='expand')
-    
+    print('full scoreboard: \n', FULL_SCOREBOARD)
+    FULL_SCOREBOARD = FULL_SCOREBOARD.loc[FULL_SCOREBOARD['delta_N1'] >= min_delta] #drop those that we would reject on low N1
+    if FULL_SCOREBOARD.shape[0] == 0: #already perfect team
+        print('already perfect team considering Next1')
+        return pd.Series()
+
     #develop ranking columns
     def get_top_score(val_type):
         full_scoreboard = FULL_SCOREBOARD.sort_values(val_type,ascending=True).reset_index(drop=True)
@@ -128,6 +146,9 @@ def choose_top_transfer_n(scoreboard, full_transfer_market, team_players, sell_v
 #       num_options, bench_factor (help in selecting the transfer options and delta)
 # @return: the selected transfer this week, in series form (inbound, outbound, delta, delta_N1, worth)
 #           other return is list containing num_transfers (>=1) and corresponding delta 
+#
+# nOTE: we are still verifying that the N1 result beat the reqiured for the gw, even tho we currently
+#   are throwing them out somewhere else as well. Since this might not always be the case. 
 def weekly_transfer(full_transfer_market, team_players, sell_value, free_transfers, max_hit, choice_factors, player_protection,\
     allowed_healths=['a'], visualize_names=False, name_df = None):
     '''initializing all the parameters'''
@@ -135,12 +156,12 @@ def weekly_transfer(full_transfer_market, team_players, sell_value, free_transfe
     transfer_market = full_transfer_market.drop('expected_pts_N1', axis=1)
     search_team_players = team_players.drop('expected_pts_N1', axis=1)
     max_transfers = free_transfers + max_hit // 4
-    print('free transfers, maxtransfers', free_transfers, max_transfers)
+    #print('free transfers, maxtransfers', free_transfers, max_transfers)
 
     '''get best transfer for each num transfers allowed by personality'''
     choices = []
     for num_transfers in range(1, max_transfers + 1):
-        print('num options in here is ,', num_options)
+        #print('num options in here is ,', num_options)
         scoreboard = top_transfer_options(transfer_market, search_team_players, sell_value,\
             num_transfers, num_options, bench_factor, player_protection, allowed_healths)
 
@@ -149,7 +170,7 @@ def weekly_transfer(full_transfer_market, team_players, sell_value, free_transfe
             transfer_option_names(visual_scoreboard, name_df, num_transfers)
 
         top_option = choose_top_transfer_n(scoreboard, full_transfer_market, team_players,\
-            sell_value, bench_factor, value_vector)
+            sell_value, bench_factor, value_vector, min_delta_dict[free_transfers][num_transfers])
         if top_option.shape[0] > 0: #if there was an improvement found
             choices.append(top_option) #will be a series
     
@@ -157,10 +178,10 @@ def weekly_transfer(full_transfer_market, team_players, sell_value, free_transfe
     '''store choice deltas in df for logging purposes'''
     choices_list = []
     for choice in choices:
-        choices_list.append((len(choice['outbound'][0]), choice['delta']))
+        choices_list.append((len(safer_eval(choice['outbound'])), choice['delta']))
     choice_report = pd.DataFrame(choices_list, columns=['num_transfers', 'delta'])
 
-    save_ft = pd.DataFrame([[[{}],[{}],0]], columns=['inbound', 'outbound', 'delta'])
+    save_ft = pd.Series(['set()','set()',0], index=['inbound', 'outbound', 'delta'])
     if choices == []: #No improvements on the team have been found
         return save_ft, choice_report
 
@@ -188,9 +209,10 @@ def weekly_transfer(full_transfer_market, team_players, sell_value, free_transfe
             0: tickets(0, 1, 0, free_transfers, hesitancy_dict, quality_factor,  1, min_delta_dict)
         }
         for choice in choices: 
-            n = len(choice['outbound'][0])
+            n = len(safer_eval(choice['outbound']))
             score = choice['delta']
             delta_N1score = choice['delta_N1']
+            print(f'{n}: {score} vs {delta_N1score}')
             buckets[n] = tickets(n, score, delta_N1score, free_transfers, hesitancy_dict, quality_factor, season_avg_delta_dict[n], min_delta_dict)
 
         print('buckets are ', buckets)
@@ -198,13 +220,13 @@ def weekly_transfer(full_transfer_market, team_players, sell_value, free_transfe
         if total==0: #very rare case where all transfers bad and 2 ft
             return 0
         magic_number = randint(1,total)
-        print('magic number is ', magic_number)
+        #print('magic number is ', magic_number)
         bidder = -1
         while magic_number > 0:
             bidder += 1
             if bidder in buckets.keys(): 
                 magic_number -= buckets[bidder]
-        print('winning bidder is ', bidder)
+        #print('winning bidder is ', bidder)
         return bidder
 
 
@@ -213,19 +235,29 @@ def weekly_transfer(full_transfer_market, team_players, sell_value, free_transfe
         return save_ft, choice_report
     else:
         for op in choices: #get the series that it corresponds to
-            if len(op['outbound'][0]) == winner:
+            if len(safer_eval(op['outbound'])) == winner:
                 return op, choice_report
     
 # @return: df with close to the cheapest combination of players that is feasible
 # instead just use cheapest player from 15 teams
+# have to be careful in case teams have no players or injured players (like in preseason.py when we access this)
+    # which kind of overcomplicated things a bit
 def get_cheapest_team(full_transfer_market):
     df = full_transfer_market
     players = []
-    for team in range(1,16):
-        position = [1 if team < 3 else 2 if team < 8 else 3 if team < 13 else 4][0]
-        player = df.loc[(df['team']==team)&(df['position']==position)].sort_values('value', ascending=True)\
+    elementssofar = [] # so don't pick same twice
+    teams, index = full_transfer_market['team'].unique(), 0
+    while len(players) < 15:
+        position = (1 if len(players) < 2 else 2 if len(players) < 7 else 3 if len(players) < 12 else 4)
+        team = teams[index]
+        index = (index + 1) % len(teams) # so will loop in circles
+        player = df.loc[(df['team']==team)&(df['position']==position)&(~df['element'].isin(elementssofar))].sort_values('value', ascending=True)\
             .reset_index(drop=True).iloc[0:1,:]
-        players.append(player)
+        if player.shape[0] == 0:
+            continue
+        else:
+            elementssofar.append(player['element'])
+            players.append(player)
     return pd.concat(players, axis=0).reset_index(drop=True)
 
 # we work in the space of only one of the prediction lengths because need just an expected points to satisfy functions
@@ -240,25 +272,24 @@ allowed_healths=['a'], visualize_names=False, name_df = None):
     else:
         transfer_market = full_transfer_market.drop('expected_pts_N1', axis=1)
         team_players = full_team_players.drop('expected_pts_N1', axis=1)
-
-
+    print(team_players)
     iteration = 1
     n = 1
     # keep making 1 transfer till none good, then 2...etc till can't improve w 5 transfers
     # use shuffle to hopefully increase chance of avoidance from getting stuck loc max.
-    while n < 5:
-        team_players = randomly_shuffle_n_players(team_players, transfer_market, sell_value, bench_factor, 6, 12)
-
+    while n < WILDCARD_DEPTH_PARAM: 
+        team_players = randomly_shuffle_n_players(team_players, transfer_market, sell_value, bench_factor, 5, 13)
         scoreboard = top_transfer_options(transfer_market, team_players, sell_value, n, 1, bench_factor, 0, allowed_healths=allowed_healths)
+        
         choice = scoreboard.loc[scoreboard['delta']>0] #drop extra rows in the case of not enough satisfiable transfers
         if choice.shape[0] == 0: #no improvements at this n
             n += 1
         else: #some improvement, back to 1 at a time
-            print('\nIn wildcard, n = ', n, 'iteration= ', iteration)
+            #print('\nIn wildcard, n = ', n, 'iteration= ', iteration)
             n = 1
 
-            outbound = choice['outbound'][0][0]
-            inb_players = choice['inbound'][0][0]
+            outbound = safer_eval(choice['outbound'][0]) #the 0 on here is to choose the top choice
+            inb_players = safer_eval(choice['inbound'][0])
             #print('out and in', outbound, inb_players)
             inbound = transfer_market.loc[transfer_market['element'].isin(inb_players)]
             old_players = team_players.loc[~team_players['element'].isin(outbound)]
@@ -282,11 +313,15 @@ allowed_healths=['a'], visualize_names=False, name_df = None):
 
 #return squad_selection = (elements that should be on the field, captain, vice captain)
 #  captain score, bench score, 
-def pick_team(team_players, health_df):
+def pick_team(team_players, health_df, with_keeper_bench=False):
     temp_players = team_players.drop('expected_pts_full', axis=1)
     temp_players = rename_expected_pts(temp_players)
     starters, bench_players = get_starters_and_bench(temp_players) #list of ints (id)
-    bench_order = get_bench_order(temp_players.loc[temp_players['element'].isin(bench_players)])
+    bench_df = temp_players.loc[temp_players['element'].isin(bench_players)]
+    if with_keeper_bench:
+        bench_order = get_bench_order_with_keeper(bench_df)
+    else:
+        bench_order = get_bench_order(bench_df)
 
     starter_df = team_players.loc[team_players['element'].isin(starters)]
     captain, vice_captain, captain_pts = find_healthy_best_captains(starter_df, health_df)
@@ -302,7 +337,7 @@ def free_hit_team(full_transfer_market, sell_value, bench_factor, allowed_health
 
 #@params:
 # gw = week
-# chip_status: dict keys=chipname, vals=boolean whether available, wildcard is tuple(boolean, end_week)
+# chip_status: dict keys=chipname, vals=0 if not played and gw played otherwise, wildcard is tuple(boolean, end_week)
 # chip_max_dict: keys=chipname, vals=False if no weeks gone, otherwise max would_be_score by chip paramater
 # wildcard_pts, freehit_pts, captain_pts, bench_pts: floats to be compared to max_dict
 # earliest_chip_weeks: dict keys=chipname, vals = int, earliest it may be played(wildcard is tuple)
@@ -310,9 +345,10 @@ def free_hit_team(full_transfer_market, sell_value, bench_factor, allowed_health
 # chip threshold_tailoff: float 0-1, how quick we decrease chip_threshold_quality
 #@return: 'wildcard', 'freehit', 'bench_boost', 'triple_captain', or 'normal'
 def play_chips_or_no(gw, chip_status, chip_threshold_dict, wildcard_pts, freehit_pts, captain_pts,\
-          bench_pts, earliest_chip_weeks, chip_threshold_tailoff):
+          bench_pts, earliest_chip_weeks, chip_threshold_tailoffs):
     def tailoff_coeff(gw, tailoff, last_gw):
-        return 1-(factorial(gw)/factorial(38))**tailoff
+        eps = .00001#avoid divide by 0
+        return 1-(factorial(gw)/factorial(last_gw))**tailoff + eps
 
     this_week_chip_scores = {
         'wildcard': wildcard_pts,
@@ -320,19 +356,22 @@ def play_chips_or_no(gw, chip_status, chip_threshold_dict, wildcard_pts, freehit
         'bench_boost': bench_pts,
         'triple_captain': captain_pts
     }
-    print('this week chip scores: ', this_week_chip_scores, '\n chip thresholds: ', chip_threshold_dict)
+    #print('this week chip scores: ', this_week_chip_scores, '\n chip thresholds: ', chip_threshold_dict)
     chip_qualities = {}
-    for chip in ['wildcard', 'freehit', 'bench_boost', 'triple_captain']:
+    for i, chip in enumerate(['wildcard', 'freehit', 'bench_boost', 'triple_captain']):
         last_gw = 38
         if chip =='wildcard': 
             last_gw = chip_status[chip][1]
         status = [chip_status[chip][0] if chip=='wildcard' else chip_status[chip]][0]
-
-        score_to_beat = chip_threshold_dict[chip]*tailoff_coeff(gw, chip_threshold_tailoff, last_gw)
+        threshold = chip_threshold_dict[chip]
+        if threshold == 0:
+            threshold += .00001 # (to avoid divide by 0)
+        if not threshold: #Got a False because we didn't have any data for this chip yet
+            continue
+        
+        score_to_beat = threshold*tailoff_coeff(gw, chip_threshold_tailoffs[i], last_gw)
         week_score = this_week_chip_scores[chip]
-        print('chip: ', chip, 'score to beat: ', score_to_beat, 'wk score: ', week_score)
-        print('status = ', status, 'early week : ', earliest_chip_weeks[chip], 'gw = ', gw)
-        if week_score > score_to_beat and status and earliest_chip_weeks[chip] <= gw:
+        if week_score > score_to_beat and not(status) and earliest_chip_weeks[chip] <= gw:
             chip_qualities[chip] = week_score/score_to_beat 
     
     if chip_qualities == {}:

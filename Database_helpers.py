@@ -166,9 +166,10 @@ def make_player_metadata_df(player_df):
             # value is just based on previous gw cost,  can't do any better
             if wk == 1:
                 value = np.nan
-            else:
-                val = df.loc[df['gw'] == wk-1]['value']
-                value = val[val.index[0]]
+            else: # assumes not two blanks in a row if use bottom two (OG)
+                value = df.loc[df['gw']<wk]['value'].to_numpy()[-1] # should just use this 
+                #val = df.loc[df['gw'] == wk-1]['value']
+                #value = val[val.index[0]]
             blank = pd.Series([season, wk, name, element, team,
                                position, value, 0, 0, 0, 0, 0], index=CORE_META)
             metas.append(blank)

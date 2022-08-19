@@ -1,3 +1,11 @@
+import pandas as pd
+from constants import DROPBOX_PATH
+from os import makedirs
+from Requests import proper_request
+from datetime import datetime
+import time
+import ast
+
 #2019-08-10T11:30:00Z
 def difference_in_days(start_day, end_day):
     root_year, root_month, root_day = start_day
@@ -66,6 +74,29 @@ def difference_in_days(start_day, end_day):
     
     return difference
 
+def daystring_to_daylist_and_vv(original):
+    if type(original) == str:
+        root_year = int(original[:4])
+        root_month = int(original[5:7])
+        root_day = int(original[8:10])
+        day = root_year, root_month, root_day
+    elif type(original) == list:
+        day = f'{original[0]}-{original[1]}-{original[2]}'
+    else:
+        raise Exception("not a proper date")
+    return day
+
+def get_current_day():
+    url = 'https://fantasy.premierleague.com/api/fixtures/'
+    response = proper_request("GET", url, headers=None)
+    df_raw = pd.DataFrame(response.json())
+    day0 = sorted(df_raw['kickoff_time'].dropna().unique())[0]
+    day0 = daystring_to_daylist_and_vv(day0)
+    daynow = datetime.today().strftime('%Y-%m-%d')
+    daynow = daystring_to_daylist_and_vv(daynow)
+
+    return difference_in_days(day0, daynow)
+
 # h, m, s  # DOES NOT ACCOUNT FOR SAME EXACT TIME
 def which_time_comes_first(a,b):
     if a[0] != b[0]: 
@@ -131,3 +162,106 @@ def get_columns_containing(patterns, df):
     else:
         return df.loc[truth_table]
     
+
+
+
+# reads the information for a specific player
+def get_meta_gwks_dfs(season, league, interval, rank):
+    group = (int(rank)-1) // interval
+    start, end = (interval * group) + 1, interval*(group + 1)
+    meta_path = DROPBOX_PATH + f"Human_Seasons/{season}/{league}_{start}-{end}/meta.csv"
+    gwks_path = DROPBOX_PATH + f"Human_Seasons/{season}/{league}_{start}-{end}/weekly.csv"
+    meta_df = pd.read_csv(meta_path, index_col=0)
+    meta_df = meta_df.loc[meta_df['rank']==rank]
+    gwks_df = pd.read_csv(gwks_path, index_col=0)
+    gwks_df = gwks_df.loc[gwks_df['rank']==rank]
+    return meta_df, gwks_df
+
+def get_data_df(century, season):
+    hypenated_season = f'{century}{str(season)[:2]}-{str(season)[2:]}'
+    training_path = DROPBOX_PATH + f"Our_Datasets/{hypenated_season}/Processed_Dataset_{season}.csv"
+    df = pd.read_csv(training_path, index_col=0)
+    data_df = df.loc[df['season']==season]
+    return data_df
+
+# will make the directory if needed 
+def safe_read_csv(path):
+    try:
+        df = pd.read_csv(path, index_col=0)
+    except:
+        try:
+            folder = ''
+            for line in path.split('/')[:-1]:
+                folder += line + '/'
+            makedirs(folder)
+        except:
+            pass
+        df = pd.DataFrame()
+    return df
+
+def safe_make_folder(folder):
+    try: 
+        makedirs(folder)
+    except:
+        pass
+
+# will make the directory if needed 
+def safe_to_csv(df, path):
+    folder = ''
+    for line in path.split('/')[:-1]:
+        folder += line + '/'
+    safe_make_folder(folder)
+    df.to_csv(path)
+
+# creates count dictionaries for a column of a dictionary
+def get_counts(df, key):
+    counts = {}
+    for _, row in df.iterrows():
+        counts[row[key]] = counts.get(row[key], 0) + 1
+    return counts
+
+# returns a list of the opponents for the upcoming week, in double gameweeks simply taking the opponennt will not suffice because we encode it as a number like 20*a + b
+def get_opponents(opp):
+    if opp == 0:
+        return [0]
+        
+    opps = []
+    while opp > 0:
+        this_opp = ((opp-1) % 20)+1
+        opps.append(this_opp)
+        opp = (opp-1) // 20
+    return opps
+
+# For unwrapping listlikes that have been stored as strings in a database
+def safer_eval(string):
+    if string == 'set()':
+        return set()
+    else:
+        return ast.literal_eval(string)
+
+
+
+##### THESE HELPERS ARE FOR THE SPECIFIC FANTASY WEBSITE NOT FOR A GENERAL WEBSITE ####
+
+USERNAME_ID = "loginUsername"
+PASSWORD_ID = "loginPassword"
+SUBMIT_BUTTON_CLASSES = ["ArrowButton-thcy3w-0","hHgZrv"]
+def login_to_website(driver, login_url, email, password):
+    driver.get(login_url)
+    time.sleep(.25)
+    driver.find_element_by_id(USERNAME_ID).send_keys(email)
+    driver.find_element_by_id(PASSWORD_ID).send_keys(password)
+    driver.find_element_by_xpath("//button[@type='submit']").submit()
+    time.sleep(2)
+
+def logout_from_website(driver, login_url):
+    driver.get(login_url)
+    time.sleep(.25)
+    try:
+        driver.find_element_by_link_text('Sign Out').click()
+        time.sleep(1)
+    except:
+        driver.find_element_by_class_name("Dropdown__MoreButton-qc9lfl-0").click()
+        time.sleep(2)
+        driver.find_element_by_link_text('Sign Out').click()
+        time.sleep(1)

@@ -5,6 +5,7 @@
 # 2) Pulling information from the website
 # 3) Pushing team information up to the website / email human
 ###########################################
+from general_helpers import safer_eval
 from Requests import proper_request
 import pandas as pd
 import aiohttp
@@ -84,6 +85,7 @@ def get_deadline(gw):
 #   free_transfers: int
 #   chips: dict of wildcard, freehit, bench_boost, triple_captain.
 #              wildcard also contains expiration gameweek
+#           the values are 0 if not played, and the gw they were played otherwise
 async def current_team(email, password, user_id):
     async with aiohttp.ClientSession() as session:
         fpl = FPL(session)
@@ -93,6 +95,7 @@ async def current_team(email, password, user_id):
         my_team = await user.get_team()
         transfer_status = await user.get_transfers_status()
         chips = await user.get_chips()
+        gwhist = await user.get_gameweek_history()
 
     gw = get_current_gw()
     free_transfers = transfer_status['limit']
@@ -108,11 +111,11 @@ async def current_team(email, password, user_id):
         squad.append(player_info)
 
         team_value += sell_value
-        
-    '''chip information'''
+
+    '''chip information''' # rewriting so it is getting the weeks that it was played
     chip_status = {}
     for chip in chips:
-        status = chip['status_for_entry'] == 'available'
+        status = (0 if chip['status_for_entry'] == 'available' else chip['played_by_entry'][0]) #chip['played_by_entry'][0]?
         if chip['name'] == 'wildcard':
             chip_status['wildcard'] = (status, chip['stop_event'])
         if chip['name'] == 'freehit':
@@ -122,7 +125,10 @@ async def current_team(email, password, user_id):
         if chip['name'] == '3xc':
             chip_status['triple_captain'] = status 
 
-    return gw, squad, team_value, free_transfers, chip_status
+    '''team point history info'''
+    weekly_point_returns = {wk['event']:wk['points'] for wk in gwhist}
+
+    return gw, squad, team_value, free_transfers, chip_status, weekly_point_returns
 
 # input: squad = list of elements in the players squad to check for injuries
 # output: dict {element: multiplier (0-1)}
@@ -233,7 +239,7 @@ async def verify_front_end_successful(login_info, verify_info):
     
     if starters_unequal or bench_unequal or captain_unequal or vc_unequal:# or nothing_changed:
         everything_went_through = False
-        print_failure_item([starters_unequal , bench_unequal , captain_unequal , vc_unequal , nothing_changed])
+        print_failure_item([starters_unequal , bench_unequal , captain_unequal , vc_unequal])# , nothing_changed])
         #print('item four might just be a bug yet to be fixed')
     
     print_msg = 'everything worked successfully' if everything_went_through else 'SOMETHING WENT WRONG, CHECK FPL SITE'
@@ -320,6 +326,25 @@ async def play_triple_captain(email, password, user_id, captain):
         await user.substitute([], [], chip='triplecaptain')
 
 
+#NOT ACTUALLY ACTIVATING AT LEAST FREE HIT RIGHT NOW, WILL HAVE TO PLAY MANUALLY
+# gets the proper order for getting a transfer to work
+async def play_chip(email, password,user_id, players, transfer_helper, chip_type):
+    inbound = set(players['element'].to_list())
+    outb_players = (await current_team(email, password, user_id))[1]
+    outbound = set([x[0] for x in outb_players])
+    inbound_list = list(inbound.difference(outbound))
+    outbound_list = list(outbound.difference(inbound))
+    inbound_list, outbound_list = transfer_helper(inbound_list, outbound_list)
+    
+    '''execute chip'''
+    wildcard = chip_type == 'wildcard'
+    freehit = chip_type == 'freehit'
+    try:
+        await make_transfers(email, password, user_id, inbound_list, outbound_list, wildcard=wildcard, freehit=freehit)
+    except:
+        print('we hit an exception on playing a chip, but we go on!')
+
+
 # play the chosen transfer/chips & pick team but currently execution through amosbastian does not work
 def execute_chip(this_week_chip, chosen_transfer, squad_selection, potential_teams, login_info,\
     brain_transfer_help, brain_substitution_help, brain_pick_team_help):
@@ -327,17 +352,20 @@ def execute_chip(this_week_chip, chosen_transfer, squad_selection, potential_tea
 
     '''transfer business''' #reverse this logic
     if this_week_chip == 'wildcard':
+        print('the wildcard players: ', wildcard_players)
         my_team = wildcard_players['element'].to_list()
         asyncio.run(play_chip(*login_info, wildcard_players, brain_transfer_help, 'wildcard'))
     elif this_week_chip == 'freehit':
         my_team = freehit_players['element'].to_list()
         asyncio.run(play_chip(*login_info, freehit_players, brain_transfer_help, 'freehit'))
     else: #normal transfer
-        inbound_list = list(chosen_transfer['inbound'][0])
-        outbound_list = list(chosen_transfer['outbound'][0])
-        if inbound_list != [] and inbound_list != [{}]: # avoid on blank gw, TEMP FIX, PLZ MAKE BETTER
-            inbound_list, outbound_list = brain_transfer_help(inbound_list, outbound_list)
-            asyncio.run(make_transfers(*login_info, inbound_list, outbound_list))
+        inbound_list = list(safer_eval(chosen_transfer['inbound']))
+        outbound_list = list(safer_eval(chosen_transfer['outbound']))
+        #if inbound_list != [] and inbound_list != [{}]: # avoid on blank gw, TEMP FIX, PLZ MAKE BETTER
+        # should automatically work now bcz everything is just a single list that could be empty,
+        # and these next 2 lines support that
+        inbound_list, outbound_list = brain_transfer_help(inbound_list, outbound_list)
+        asyncio.run(make_transfers(*login_info, inbound_list, outbound_list))
         my_team = new_team_players['element'].to_list()
         print(my_team)
         
@@ -357,9 +385,11 @@ def execute_chip(this_week_chip, chosen_transfer, squad_selection, potential_tea
         print('playing bench_boost')
         asyncio.run(play_bench_boost(*login_info))
 
+    print('This week chip is ', this_week_chip)
     action = len(inbound_list) if this_week_chip not in ('freehit', 'wildcard') else this_week_chip
-    if type(action) == int and isinstance(inbound_list[0], set): #short before addressing inb list which doesn't exist always
-        action = 0
+    print("Action = ", action)
+    #if type(action) == int and isinstance(inbound_list[0], set): #short before addressing inb list which doesn't exist always
+    #    action = 0
     return [starters, bench, captain, vice_captain, action] #for verifying
 
 
@@ -373,7 +403,7 @@ def notify_human(teamname, comp_email, comp_password, destination_email, gw, chi
         server.ehlo()
         server.starttls()
         server.ehlo()
-        server.login(sender_email,sender_password) #CHANGE ME!
+        server.login(sender_email,sender_password) # CAN OFTEN FAIL IF GOOGLE ALLOW LESS SECURE APPS TURNS ITSELF OFF, MAYBE SHOULD SWITCH TO YAHOO
         server.sendmail(sender_email, receiver_email, content)
         server.close()
     
@@ -417,3 +447,18 @@ def notify_human(teamname, comp_email, comp_password, destination_email, gw, chi
     
     message = from_sec+to_sec+sub_sec+body
     send_email(sender_email, sender_password, receiver_email, message)
+
+
+# current info: 
+    # 1) ____
+# we will potentially want to collect info from scraping the website
+def login_and_get_info_selenium(email, password, team_id):
+    from selenium import webdriver
+    from general_helpers import login_to_website, logout_from_website
+    driver = webdriver.Chrome() #webdriver.Firefox()
+    HOSTNAME = 'https://fantasy.premierleague.com'
+    login_url = HOSTNAME
+
+    login_to_website(driver, login_url, email, password)
+
+    # do stuff

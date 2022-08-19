@@ -1,4 +1,4 @@
-from constants import DROPBOX_PATH, BACKUP_COMPUTER_WHO_RUNS_MAIN_SCRIPT, BACKUP_COMPUTER_OS_RUNS_MAIN_SCRIPT
+from constants import DROPBOX_PATH
 import pandas as pd
 from datetime import datetime
 from general_helpers import safe_read_csv
@@ -31,12 +31,6 @@ def main():
             new_row_df = pd.DataFrame([[date, 'yes']], columns=['date', 'success'])
             main_script_df = pd.concat([main_script_df, new_row_df], axis=0, ignore_index=True)
             
-    # often running on a different computer
-    else:
-        print('hello backup computer')
-        import malleable_constants
-        malleable_constants.change_computer_username(BACKUP_COMPUTER_WHO_RUNS_MAIN_SCRIPT)
-        malleable_constants.change_c_entry(BACKUP_COMPUTER_OS_RUNS_MAIN_SCRIPT)
     
     # main chunk
     from Overseer import FPL_AI

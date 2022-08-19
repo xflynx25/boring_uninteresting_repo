@@ -19,10 +19,11 @@
 ''' Vaastav File Summary '''
 ## used gw folder and players_raw.csv
 #%%
-import time
+from Accountant_helpers import get_and_save_teamconverter
 import importlib 
 import Database_helpers 
 importlib.reload(Database_helpers)
+from general_helpers import safe_to_csv, get_opponents
 from Database_helpers import * #helper functions
 
 # Vaastav Data :: (22467 x 50) COMPLETE ~instantaneous
@@ -62,7 +63,7 @@ def get_raw_player_gw(season, gw, day0):
             std_transfers[col].values[:] = 0
             
     ''' get match stats , make season_column,  make day and time columns  2019-08-10T11:30:00Z '''
-    other_stats = gw_df[playerMATCHstats]
+    other_stats = gw_df.loc[:, playerMATCHstats]  
     season_col = season_column(season, meta.shape[0])
     day_time_df = pd.DataFrame(gw_df['kickoff_time']).apply(lambda x: format_kickoff(x, day0), axis=1, result_type='expand')
     day_time_df.columns = ['day', 'hour']
@@ -91,8 +92,8 @@ def processed_player_season(raw_players, form_lengths, forward_pred_lengths):
     for player in raw_players['element'].unique():
         player_df = raw_players.loc[raw_players['element']==player]
         # now we create custom columns for last 1, last3, last6, avg/match also output columns (pts in next1, next3, next6)
-        match_stats = player_df[CORE_STATS + ['gw']] #just gw and integer stats
-        extended_match_stats = player_df[CORE_STATS + ['gw', 'was_home']] #includes home
+        match_stats = player_df[CORE_STATS + BOOLEAN_STATS + ['gw']] #just gw and integer stats
+        extended_match_stats = player_df[CORE_STATS + BOOLEAN_STATS + ['gw', 'was_home']] #includes home
 
         '''adds _Ln for all n in form_lengths, 22xn additional columns'''
         stat_list = []
@@ -275,6 +276,34 @@ def combine_player_and_team(season, form_lengths, forward_pred_lengths, raw_play
 ############# FUNCTIONS TO CALL DIRECTLY ##########
 ###################################################
 
+# we can move the combined dataset to the folders we using for the future
+def shift_dataset_to_folders(dataset_path, years):
+    full_df = pd.read_csv(dataset_path, index_col=0)
+    for year in years:
+        folder = DROPBOX_PATH + 'Our_Datasets/20' + str(year)[:2] + '-' + str(year)[2:] + '/'
+        year_path = folder + f'Processed_Dataset_{year}.csv'
+        fix_path = folder + 'fix_df.csv'
+        df = full_df.loc[full_df['season']==year]
+        safe_to_csv(df, year_path)
+        df = df[['gw', 'team', 'opponent', 'day', 'hour', 'was_home']].drop_duplicates(ignore_index=True)
+        
+        # we need to fix that opponents are represented by the *20 thing
+        fix_list = []
+        for _, row in df.iterrows():
+            opps = get_opponents(row['opponent'])
+            for opp in opps:
+                row.loc['opponent'] = opp 
+                fix_list.append(row.copy())
+
+        fix_df = pd.concat(fix_list, axis=1).T
+        safe_to_csv(fix_df, fix_path)
+        
+        # saving team converter
+        get_and_save_teamconverter(year) #int year
+
+
+
+import time
 #wtihout 2019 but with team stats, much better cv score
 def get_the_database(form_lengths, prediction_lengths, years = ['2018-19','2017-18','2016-17']):
     start = time.time()
@@ -284,14 +313,16 @@ def get_the_database(form_lengths, prediction_lengths, years = ['2018-19','2017-
         all_years.append(year_df)
     total = pd.concat(all_years, axis=0, ignore_index=True)
     print('all together = ', total.shape) #67909 x 627
-    total.to_csv(r"C:\Users\JFlyn\Dropbox (MIT)\FPL_Datasets\updated_training_dataset.csv")
+    total.to_csv(DROPBOX_PATH + "updated_training_dataset.csv")
     end = time.time() 
-    print("Timing (min): ", end-start) # 90 min
+    print("Timing (min): ", end-start) # 90 min or like 45 ish minutes now?? did python get mad optimized or i do something
 
 
 if __name__ == "__main__":
     form_lengths = [1,2,3,6]
     prediction_lengths = [1,2,3,4,5,6]
     get_the_database(form_lengths, prediction_lengths)
+    
+    shift_dataset_to_folders(DROPBOX_PATH + 'updated_training_dataset.csv', [1617, 1718, 1819])    
 
 # %%

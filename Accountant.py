@@ -15,23 +15,24 @@
 import time
 from datetime import datetime
 import importlib 
+from constants import INT_SEASON_START, STRING_SEASON
 import Accountant_helpers 
 importlib.reload(Accountant_helpers)
 from Accountant_helpers import * #helper functions
 
-PLAYER_DB = DROPBOX_PATH + r'\player_raw.csv'
-TEAM_DB = DROPBOX_PATH + r'\team_raw.csv'
-ODDS_DB = DROPBOX_PATH + r'\odds.csv'
-PLAYER_HEALTH_DB = DROPBOX_PATH + r'\player_health.csv'
-BACKUP_ODDS = DROPBOX_PATH + r"\2020_odds_online.csv"
+PLAYER_DB = DROPBOX_PATH + r'player_raw.csv'
+TEAM_DB = DROPBOX_PATH + r'team_raw.csv'
+ODDS_DB = DROPBOX_PATH + r'odds.csv'
+PLAYER_HEALTH_DB = DROPBOX_PATH + r'player_health.csv'
+BACKUP_ODDS = DROPBOX_PATH + f"{INT_SEASON_START}_odds_online.csv" #get from https://www.football-data.co.uk/englandm.php
 
 def redefine_globals(prefix):
     global PLAYER_DB, TEAM_DB, ODDS_DB, PLAYER_HEALTH_DB, BACKUP_ODDS
-    PLAYER_DB = prefix + r'\player_raw.csv'
-    TEAM_DB = prefix + r'\team_raw.csv'
-    ODDS_DB = prefix + r'\odds.csv'
-    PLAYER_HEALTH_DB = prefix + r'\player_health.csv'
-    BACKUP_ODDS = prefix + r"\2020_odds_online.csv"
+    PLAYER_DB = prefix + r'player_raw.csv'
+    TEAM_DB = prefix + r'team_raw.csv'
+    ODDS_DB = prefix + r'odds.csv'
+    PLAYER_HEALTH_DB = prefix + r'player_health.csv'
+    BACKUP_ODDS = prefix + f"{INT_SEASON_START}_odds_online.csv"
 
 # returns df with ids and names so we can understand what players they looking at
 def make_name_df():
@@ -42,14 +43,37 @@ def make_name_df():
     name_df.columns = ['element','name']
     return name_df
     
-# @return: df w/ a,d,i,u statuses
-def make_health_df():
+# @return: df w/ a,d,i,u statuses for this week, save all weeks
+def make_and_save_health_df(gw):
+    saved_path = DROPBOX_PATH + "health_df.csv"
     url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
     response = proper_request("GET", url, headers=None)
     players_raw = pd.DataFrame(response.json()['elements'])
     health_df = players_raw[['id','status']]
     health_df.columns = ['element','status']
+    health_df.loc[:, 'gw'] = gw
+    df = safe_read_csv(saved_path)
+    if df.shape[0] > 0:
+        df = df.loc[df['gw']!=gw]
+    pd.concat([df, health_df]).to_csv(saved_path) 
     return health_df
+
+# prices and day that they were that price in absolute day 
+def make_and_save_price_df():
+    print('entered')
+    day = get_current_day()
+    saved_path = DROPBOX_PATH + "price_df.csv"
+    url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
+    response = proper_request("GET", url, headers=None)
+    players_raw = pd.DataFrame(response.json()['elements'])
+    price_df = players_raw[['id','now_cost']]
+    price_df.columns = ['element','value']
+    price_df.loc[:, 'day'] = day
+    df = safe_read_csv(saved_path)
+    if df.shape[0] > 0:
+        df = df.loc[df['day']!=day]
+    pd.concat([df, price_df]).to_csv(saved_path)  
+    return price_df
 
 # @return: df w/ a,d,i,u statuses
 def make_pseudohealth_df_offline(elements):
@@ -60,8 +84,9 @@ def make_pseudohealth_df_offline(elements):
     health_df.columns = ['element','status']
     return health_df
 
+
 ''' # RUNTIME # :: Near Instantaneous
-@param: '2020-21'
+@param: '2020-21' format (right now only supporting current season)
 @return: df with gw, team, opponent, was_home, day, hour, kickoff_time
         where blanks are moved to gw38 till rescheduled
         also returns the current_gw we are on
@@ -78,6 +103,8 @@ def make_fixtures_df(season, ignore_gwks=[]):
     fixtures = []
     for row in df.iterrows():
         row = row[1]
+        ''' WE DON'T ACTUALLY HAVE TO SCHEDULE IT, WHEN THE TIME COMES IT WILL APPEAR 
+            ||| BUTTTT, WE USE IT FOR PATCH ODDS SO WE KEEP'''
         if math.isnan(row['gw']): #'schedule' for last day of season 
             row['gw'] = 38
             row['kickoff_time'] = last_date
@@ -90,7 +117,7 @@ def make_fixtures_df(season, ignore_gwks=[]):
         fixtures.append(pd.concat([team1, team2], axis=1, ignore_index=True, sort=True).T)
     fixtures_df = pd.concat(fixtures, axis=0, ignore_index=True)
 
-     # day and time columns
+    # day and time columns
     day0 = sorted(df_raw['kickoff_time'].dropna().unique())[0]
     root_year = int(day0[:4])
     root_month = int(day0[5:7])
@@ -108,13 +135,15 @@ def make_fixtures_df(season, ignore_gwks=[]):
         current_gw = int( min( df_raw.loc[df_raw['started']==False]['event'] ) )
     except: #just for testing after season ends, come back and delete
         current_gw = 38
+        
+    final_df.to_csv(DROPBOX_PATH + "fix_df.csv") #important to keep this up to date for postseason stuff
     return final_df, current_gw
 
 ''' 2 api calls to get all available odds for the league, adds to the csv'''
 # uses additional api calls if the big call doesn't take care of all those in fixtures_df before current_gw
 def update_odds_df(fixtures_df, current_gw, patch=False):
-    SEASON = 2020
-    premier_league = get_premier_league_id(SEASON)
+    print('in odds df')
+    premier_league = get_premier_league_id(INT_SEASON_START)
     week_odds = get_bet365_odds(premier_league)
 
     available_odds = []
@@ -123,12 +152,15 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
         available_odds.append(pd.Series(group, index=['fixture_id','oddsH', 'oddsD', 'oddsA']))
     week = pd.concat(available_odds, axis=1, ignore_index=True).T
 
-    odds_df =  pd.read_csv(ODDS_DB, index_col=0)
+    odds_df =  safe_read_csv(ODDS_DB)
     try:
         odds_df = odds_df.loc[~odds_df['fixture_id'].isin(week['fixture_id'])] #replaces already entered
     except KeyError:
         pass #just the first time opening it 
     final_odds = pd.concat([odds_df, week], axis=0, sort=True).reset_index(drop=True)
+    print('the matches and then the odds')
+    print(week_odds)
+    print(final_odds)
 
     '''look at ones this week in case general func didn't get them'''
     first_patch = False
@@ -138,16 +170,19 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
         clutch_odds = individual_game_odds(premier_league, final_odds, fixtures_df, current_gw) #from helpers
         final_odds = pd.concat([final_odds, clutch_odds], axis=0, sort=True).reset_index(drop=True)
     
-    '''do a soft check to see if were missing things, this might not catch if we have recorded doubles" odds'''
+    '''do a soft check to see if were missing things, this might not catch if there have been game delays which earlier had odds,
+            or we have recorded doubles" odds'''
+    print(fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2, final_odds.shape[0])
     if fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2 > final_odds.shape[0]: #not all the odds , first term has both representations of the week
         patch = True
     if patch:
-        #clutch_odds = individual_game_odds(premier_league, final_odds, fixtures_df, current_gw, what_weeks='upto')
-        #final_odds = pd.concat([final_odds, clutch_odds], axis=0, sort=True).reset_index(drop=True)
+        '''manual patching'''
         relevant = ['Date', 'HomeTeam', 'AwayTeam', 'B365H', 'B365D', 'B365A']
+        print(BACKUP_ODDS)
+        print('thats the pirnt')
         database = pd.read_csv(BACKUP_ODDS, index_col=0)[relevant]
         final_odds = patch_odds(final_odds, database, fixtures_df, current_gw)        
-    
+    print(first_patch, patch, 'these were the patches.')
     final_odds.to_csv(ODDS_DB)
 
 # Update Player
@@ -156,7 +191,7 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
 ### We only save the weeks that vaastav has - He will almost always have 
 ###   the previous week up before the deadline. However, if he doesn't, 
 ###   we get the data directly from the website and process it ourselves. 
-###
+### 
 ### If something fails, one can manually input the weeks to be fixed in constants
 ###
 ### Top line was for previous season different representation for vaastav
@@ -184,9 +219,9 @@ def update_player_previous(season, current_gw):
         need_filling = [x+1 for x in range(current_gw)][:-1]
     
     earliest_replacement = min(need_filling)
-    players = players.loc[players['gw']<earliest_replacement] #remove all weeks after earliest week needs filling
+    if players.shape[0] > 0:
+        players = players.loc[players['gw']<earliest_replacement] #remove all weeks after earliest week needs filling
     
-
 
     for gw in range(earliest_replacement, current_gw):
         player_gw = online_raw_player_gw(season, gw)
@@ -238,7 +273,7 @@ def update_player_current(prev_week_players, current_gw):
 def update_team_previous(current_gw, fixtures_df):
     if current_gw == 1:
         return
-    odds_df = pd.read_csv(ODDS_DB, index_col=0)
+    odds_df = safe_read_csv(ODDS_DB)
     teams = safely_get_database(TEAM_DB, current_gw)
 
     try:
@@ -250,12 +285,13 @@ def update_team_previous(current_gw, fixtures_df):
         need_filling = [x+1 for x in range(current_gw) if x != current_gw - 1]
 
     for gw in need_filling:
+        print('need filling: ', gw)
         relevant = ['gw', 'day', 'hour', 'team', 'opponent', 'was_home', 'kickoff_time']
         df = fixtures_df[relevant]
         df = df.loc[df['gw']==gw]
 
-        SEASON = 2020
-        season = '2020-21'
+        SEASON = INT_SEASON_START
+        season = STRING_SEASON
         premier_league = get_premier_league_id(SEASON) 
         vastaav_converter = id_to_teamname_converter(season)# db id --> namestring
         api_converter = api_id_to_teamname_converter(premier_league) #teamname_to_id_converter(season) # api id --> namestring
@@ -264,15 +300,23 @@ def update_team_previous(current_gw, fixtures_df):
         new_rows = []
         dates = df['kickoff_time'].apply(lambda x: x[:10]).unique()
         for date in dates:
+            print('need filling: ', date)
             fixtures = get_fixture_ids(premier_league, date)
             for fix in fixtures: #(id, h, a, home_g, away_g, status)
+                
+                print('need filling: ', fix)
                 if fix[5] != 'Match Finished':
                     continue #match has not taken place yet 
 
                 fixture_id = fix[0]
                 raw_odds = odds_df.loc[odds_df['fixture_id']==fixture_id].reset_index(drop=True)
                 if raw_odds.shape[0] == 0:
-                    raise Exception("Do not have odds stored for this fixture")
+                    print('oh nooooo')
+                    ''' alternative if just want to run and not worry about exception '''
+                    fake_temp_odds = pd.DataFrame([[fixture_id, 0,0,0]], columns=['fixture_id','oddsA','oddsD','oddsH'])
+                    raw_odds = fake_temp_odds
+                    print('no odds stored for this fixture just using the average')
+                    #raise Exception("Do not have odds stored for this fixture")
                 stats = get_match_stats(fixture_id) # Sh, Sa, ST, F, C dict (8 items)
 
                 home_id = super_converter[fix[1]]
@@ -297,14 +341,14 @@ def update_team_previous(current_gw, fixtures_df):
 ### Use Fixtures DF to get 'gw', 'day', 'hour', 'team', 'opponent', 'was home'
 ### Use API to get oddsW, oddsD, oddsL for all games w gw, store odds for matches in seperate df
 def update_team_current(current_gw, fixtures_df):
-    odds_df = pd.read_csv(ODDS_DB, index_col=0)
+    odds_df = safe_read_csv(ODDS_DB)
     teams = safely_get_database(TEAM_DB, current_gw)
 
     df = fixtures_df[['gw', 'day', 'hour', 'team', 'opponent', 'was_home', 'kickoff_time']]
     df = df.loc[df['gw']==current_gw]
 
-    SEASON = 2020
-    season = '2020-21'
+    SEASON = INT_SEASON_START
+    season = STRING_SEASON
     premier_league = get_premier_league_id(SEASON) 
     vastaav_converter = id_to_teamname_converter(season)# db id --> namestring
     api_converter = team_id_converter_api(premier_league) # api id --> namestring
@@ -350,10 +394,13 @@ def update_team_current(current_gw, fixtures_df):
 def processing_overseer(current_gw, form_lengths, forward_pred_lengths, fixtures_df, raw_players, getting_postseason = False):
     team_concessions = make_team_fantasy_point_concessions(current_gw, raw_players, fixtures_df)
     team_concessions.to_csv(DROPBOX_PATH + "team_concessions.csv")
-    raw_teams = pd.read_csv(TEAM_DB, index_col=0)
+    raw_teams = safe_read_csv(TEAM_DB)
     raw_teams = pd.merge(raw_teams, team_concessions, how='left', on=['gw','team','opponent']) ## new addition
 
+    print('starting processed players')
+    start = time.time()
     players = online_processed_player_season(raw_players, form_lengths, forward_pred_lengths, getting_postseason=getting_postseason)
+    print(f'processed players took {round((time.time() - start)/60, 2)} minutes')
     print('proccessed players', players.shape, 'expect more than half 205 features, bcz 1,2,3,6')
     teams = online_processed_team_season(raw_teams, form_lengths, forward_pred_lengths)
     teams = online_opponent_datacollect(teams, forward_pred_lengths, fixtures_df)
@@ -371,7 +418,7 @@ def processing_overseer(current_gw, form_lengths, forward_pred_lengths, fixtures
 def current_week_full_stats(season, form_lengths, forward_pred_lengths, ignore_gwks=[]):
     fixtures_df, current_gw = make_fixtures_df(season, ignore_gwks=ignore_gwks)
     print('currently thinks it is gameweek ', current_gw, ' because that is when the first unplayed game was')
-    update_odds_df(fixtures_df, current_gw) 
+    update_odds_df(fixtures_df, current_gw, patch=False) # set patch to true if there have been canceled games this season screwing up the odds
 
     raw_players = update_player_previous(season, current_gw) 
     raw_players = update_player_current(raw_players, current_gw)
@@ -388,7 +435,7 @@ def current_week_full_stats(season, form_lengths, forward_pred_lengths, ignore_g
 # This will save into the season folder the end year results, provided you moved
 # preliminary odds, fixtures, player raw, & team raw
 def finish_recording_season_gw38(season):
-    prefix = DROPBOX_PATH + f"{season}/"
+    prefix = DROPBOX_PATH + f"Our_Datasets/{season}/"
     redefine_globals(prefix)
     fixtures_df = pd.read_csv(prefix + "fix_df.csv", index_col=0)
     current_gw = 39
@@ -398,7 +445,7 @@ def finish_recording_season_gw38(season):
 
 # The way to create the yearly datasets post 2019
 def get_season_data_and_save(season, form_lengths, forward_pred_lengths):
-    prefix = DROPBOX_PATH + f"{season}/"
+    prefix = DROPBOX_PATH + f"Our_Datasets/{season}/"
     redefine_globals(prefix)
     print(PLAYER_DB)
     current_gw = 38
@@ -407,6 +454,20 @@ def get_season_data_and_save(season, form_lengths, forward_pred_lengths):
     current = processing_overseer(current_gw, form_lengths, forward_pred_lengths, fixtures_df, raw_players, getting_postseason = True)
     int_season = int(season[2:4]) * 100 + int(season[5:7])
     current['season'] = int_season
+
+    # adding name column
+    names = {}
+    for gw in range(1,39):
+        vaast_path = VASTAAV_ROOT + season + '/gws/gw' + str(gw) + '.csv'
+        for i, row in Requests.get_df_from_internet(vaast_path).iterrows():
+            if row['element'] not in names.keys():
+                names[row['element']] = row['name']
+    name_col = current.apply(lambda x: names[x['element']], axis=1)
+    current.insert(2, 'name', name_col, True)
+
+    # saving team converter
+    get_and_save_teamconverter(int_season)
+
     current.to_csv(prefix + f"Processed_Dataset_{int_season}.csv")
 
 #@param: folder with trailing slash, max_hit is pos int multiple of four
@@ -414,7 +475,7 @@ def get_season_data_and_save(season, form_lengths, forward_pred_lengths):
 #       val is False if there have been no such games yet 
 def make_delta_dict(folder, max_hit):
     delta_dict = {}
-    deltas = pd.read_csv(folder+'deltas.csv', index_col=0)
+    deltas = safe_read_csv(folder+'deltas.csv')
     for num_transfers in range(1, 3+max_hit//4):
         if deltas.shape[0] == 0: #before has been initialized
             delta_dict[num_transfers] = False 
@@ -430,7 +491,7 @@ def make_delta_dict(folder, max_hit):
 #@param: folder with training slash, choice report already comes with proper column labelling
 # concatenates this weeks num_transfers and scores to the folder 
 def update_delta_db(folder, choice_report):
-    deltas = pd.read_csv(folder+'deltas.csv', index_col=0)
+    deltas = safe_read_csv(folder+'deltas.csv')
     all_deltas = pd.concat([deltas, choice_report],axis=0).reset_index(drop=True)
     all_deltas.to_csv(folder+'deltas.csv')
 
@@ -438,9 +499,9 @@ def update_delta_db(folder, choice_report):
 #@param, folder with trailing slash, dict with {chip: (%of top, std_deviations, choice_method)}
     #where choice method is either 'max', 'min', 'avg'
 #@return: dict with keys= str(chipname) val=float, avg score
-def make_chip_dict(folder, gw, chip_threshold_construction):
+def make_chip_dict(folder, gw, chip_threshold_construction, wildcard_method):
     chip_dict = {}
-    chips = pd.read_csv(folder+'chips.csv', index_col=0)
+    chips = safe_read_csv(folder+'chips.csv')
     for chip in ('wildcard', 'freehit', 'bench_boost', 'triple_captain'):
         if chips.shape[0] == 0: #before has been initialized
             chip_dict[chip] = False 
@@ -469,29 +530,29 @@ def make_chip_dict(folder, gw, chip_threshold_construction):
                 games_left = 39-gw
                 chip_dict[chip] *= games_left/6
 
+            if chip == 'wildcard' and wildcard_method == 'modern':
+                chip_dict['wildcard'] = chip_threshold_construction['wildcard'][0]
+
     return chip_dict
 
 #@param: folder with slash,  floats that describe weekly scores
 # writes to the csv where we store the info
 def update_chip_db(folder, gw, wildcard_pts, freehit_pts, captain_pts, bench_pts):
-    chips = pd.read_csv(folder+'chips.csv', index_col=0)
+    chips = safe_read_csv(folder+'chips.csv')
     week_info = pd.DataFrame([[gw, wildcard_pts, freehit_pts, bench_pts, captain_pts]],\
         columns=['gw','wildcard', 'freehit','bench_boost','triple_captain']) 
     all_chips = pd.concat([chips, week_info], axis=0).reset_index(drop=True)
     all_chips.to_csv(folder+'chips.csv')
 
+
 # checks if overseer has completed this week
 def already_made_moves(folder, gw):
     try:
         path = folder + 'made_moves.csv'
-        print('right before this')
-        df = pd.read_csv(path, index_col=0)
-        print('right after')
-        print(df)
+        df = safe_read_csv(path)
         truthality = gw in df['gw'].to_list()
-        print(truthality)
         return truthality
-    except: #first time doing this
+    except: #first time doing this, ['gw'] will register error
         pd.DataFrame().to_csv(path)
         return False
 
@@ -500,7 +561,7 @@ def log_gameweek_completion(folder, gw, transfer_info):
     t = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     date_info = [int(t[s:e]) for s,e in zip([0,5,8,11],[4,7,10,13])]
     path = folder + 'made_moves.csv'
-    df = pd.read_csv(path, index_col=0)
+    df = safe_read_csv(path)
     new_row = pd.DataFrame([[gw] + date_info + transfer_info], columns=['gw','year', 'month', 'day', 'hour','num_transfers', 'chip'])
     final_df = pd.concat([df, new_row], axis=0)
     final_df.to_csv(path)
@@ -508,7 +569,7 @@ def log_gameweek_completion(folder, gw, transfer_info):
 #return true if the csv sees evidence of database and predictions constructed today
 def check_if_explored_today():
     path = DROPBOX_PATH + 'dates_updated.csv'
-    df = pd.read_csv(path, index_col=0)
+    df = safe_read_csv(path)
     if df.shape[0] == 0: # first read
         return False
 
@@ -526,12 +587,12 @@ def check_if_explored_today():
 #updates the db with verifcation predictions are up to date
 def update_explored_today():
     path = DROPBOX_PATH + 'dates_updated.csv'
-    df = pd.read_csv(path, index_col=0)
+    df = safe_read_csv(path)
     
     t = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     y,m,d = [int(t[s:e]) for s,e in zip([0,5,8],[4,7,10])]
 
-    if df.shape[0] == 0: #for now
+    if df.shape[0] == 0: #for now 
         not_already_logged = True
     else:
         not_already_logged = df.loc[(df['year']==y)&(df['month']==m)&(df['day']==d)].shape[0] == 0
@@ -543,5 +604,5 @@ def update_explored_today():
 if __name__ == "__main__":
     FORM_LENGTHS = [1,2,3,6]
     PREDICTION_LENGTHS = [1,2,3,4,5,6]
-    #finish_recording_season_gw38('2020-21')
-    #get_season_data_and_save('2020-21', FORM_LENGTHS, PREDICTION_LENGTHS)
+    #finish_recording_season_gw38(STRING_SEASON)
+    #get_season_data_and_save(STRING_SEASON, FORM_LENGTHS, PREDICTION_LENGTHS)
