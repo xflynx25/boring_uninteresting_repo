@@ -15,5 +15,5 @@ FormatConverter.py
 *.swp
 .vscode*
 copies/**
-
+!public_versions*
 
