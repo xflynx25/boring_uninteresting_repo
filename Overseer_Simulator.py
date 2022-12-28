@@ -5,7 +5,7 @@ To optimize this for nn use we should eliminate the saving and reading and rathe
 """
 
 
-import constants
+import private_versions.constants as constants
 import Oracle 
 import Brain 
 import pandas as pd
@@ -17,6 +17,7 @@ def overseer_simulator_get_transfer_market(when_transfer, gw, field_suite_tms_li
     tms_index = (0 if type(when_transfer) == str else [l.count(gw) for l in when_transfer].index(1))
     field_suite_tms = field_suite_tms_list[tms_index] # so now we have the specific transfer market based on the when transfer 
     keeper_suite_tms = keeper_suite_tms_list[tms_index]
+    print(field_suite_tms, keeper_suite_tms)
     
     dffieldplayers = Oracle.avg_transfer_markets([df.loc[df['gw']==gw].drop('gw', axis=1) for df in field_suite_tms if (gw in df['gw'].unique()) ]) #end part например early and late only want one
     

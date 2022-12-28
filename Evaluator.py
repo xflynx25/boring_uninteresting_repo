@@ -4,12 +4,13 @@ f (season, starting_team, g(processed_data, current_team, sell_value, free_trans
     --> season score 
 !-! We keep track of team as what we bought them for, recalculate their sell price before send to transfer func
 """
-#%%
-from constants import DROPBOX_PATH, WILDCARD_2_GW_STARTS, change_wildcard_depth, POINT_HISTORY_REFERENCE_PATH
+#!%%
+print('first thing on the page')
+from private_versions.constants import DROPBOX_PATH, WILDCARD_2_GW_STARTS, change_wildcard_depth, POINT_HISTORY_REFERENCE_PATH
 
 change_wildcard_depth(4) # 4 for now because just speed running for evaluator, 5 for actual
 
-from general_helpers import safe_make_folder
+from general_helpers import safe_make_folder, blockPrint, enablePrint
 from random import random
 from Evaluator_helpers import this_week_chip, get_meta_gwks_dfs, get_data_df, CENTURY, get_league_player_starting_team,\
     get_athena_skeleton, compute_all_transfer_dfs, generate_x_random_starting_teams, MALLEABLE_PARAMS, evolve_team,\
@@ -68,7 +69,10 @@ def simulate_season(data_df, starting_team, gw1_pick_team, transfer_function, wh
     chip_status = {'wildcard': [0, WILDCARD_2_GW_STARTS[SEASON]], 'freehit': 0, 'bench_boost': 0, 'triple_captain': 0}
     scores = {}
     temp_storage = None # Freehit team
+    print('about to block print')
+    blockPrint()
     for gw in range(1,39):
+        print(f'gw is {gw}')
         SKIP_TO_WEEK = 2
         if gw < SKIP_TO_WEEK and gw != 1: # to skip to certain week
             scores[gw] = random.randint(20,80)
@@ -98,6 +102,7 @@ def simulate_season(data_df, starting_team, gw1_pick_team, transfer_function, wh
         if gw > 1:
 
             ## DECISION MAKING ## 
+            blockPrint()
             squad = team[['element', 'sell']].to_numpy().tolist()
             transfer_args = (this_gw_data, gw, squad, sv, ft, chip_status, scores)
             transfer, chip, captain, vcaptain, bench = transfer_function(transfer_args)
@@ -112,6 +117,7 @@ def simulate_season(data_df, starting_team, gw1_pick_team, transfer_function, wh
 
             ## EVOLVE TEAM ##
             team = evolve_team(team, inbound, outbound, price_data)
+            enablePrint()
             if chip == 'wildcard':
                 chip_status['wildcard'][0] = gw
             elif chip:
@@ -122,7 +128,7 @@ def simulate_season(data_df, starting_team, gw1_pick_team, transfer_function, wh
             ft, hit = [(1, 0) if chip in ('wildcard', 'freehit') else (min(max(ft - len(inbound), 0)+1, 2) , (len(inbound)>ft)*4*(len(inbound)-ft))][0]
             #if len(inbound) > print_transfers_over and verbose:
             #    print(f'gw{gw}: ntransfers = {len(inbound)}')
-            #print('gw: ', gw, 'team_shape = ', team.shape, '  ft: ', ft, '   round transfers was ', len(inbound), '   any chips = ', chip, '   hit= ', hit)
+            print('gw: ', gw, 'team_shape = ', team.shape, '  ft: ', ft, '   round transfers was ', len(inbound), '   any chips = ', chip, '   hit= ', hit)
         else:
             chip, captain, vcaptain, bench = gw1_pick_team
             inbound, outbound = set(), set()
@@ -225,13 +231,13 @@ def get_athena_season(season, starter_packs, personalities, verbose=False):
     data_df = get_data_df(CENTURY, season)
     all_field_suites = set([item for suite_list in [x['field_model_suites'] for x in personalities] for stage_suites in suite_list for item in stage_suites ])
     all_keeper_suites = set([item for suite_list in [x['keeper_model_suites'] for x in personalities] for stage_suites in suite_list for item in stage_suites])
-    #print( all_field_suites, all_keeper_suites)
+    print( all_field_suites, all_keeper_suites)
     tm_folder = DROPBOX_PATH + f"Simulation/athena_Simulation/transfer_markets/{season}/"
     safe_make_folder(tm_folder) # make sure we hav e afolder for simulating this year
     all_field_suites = [x for x in all_field_suites if x+'.csv' not in listdir(tm_folder)]
     all_keeper_suites = [x for x in all_keeper_suites if x+'.csv' not in listdir(tm_folder)]
     all_suites = (all_field_suites, all_keeper_suites)
-    #print(all_suites,listdir(tm_folder))
+    print(all_suites,listdir(tm_folder))
     #raise Exception('suite chekc')
     compute_all_transfer_dfs(season, tm_folder, data_df, all_suites)
     
@@ -287,7 +293,7 @@ def get_athena_season(season, starter_packs, personalities, verbose=False):
     'chip_threshold_tailoff'
     'player_protection'
     'field_model_suites'
-    'keeper_model_suites'
+    'keeper_model_suites' 
 """ 
 ###### RUNTIME:: 37 minutes to simulate 1 season
 # @param: season: (2021), num_trials: how many diff starting teams to try (random from top 10,000)
@@ -295,6 +301,7 @@ def get_athena_season(season, starter_packs, personalities, verbose=False):
 # __note__ ;; if 'when_transfer' is early, we automatically change the features to field_early_transfer_batch
 # @return: None, save with cols: num_trials, 13 features, 9 results 
 def athena_param_sweep(season, num_trials, testing, verbose=False):
+    print(f'season is {season}')
     # setup the datastructures
     SEED  = random.randint(1, 10**9)
     ATHENA_SKELETON = get_athena_skeleton(season)
@@ -347,9 +354,12 @@ def athena_param_sweep(season, num_trials, testing, verbose=False):
     
     personalities = get_all_combos(testing.copy()) # need to combine with athena skeleton already so mahybe just allow for only puttting the things we are going to chagne.
     personalities = adjust_based_on_when_transfer(personalities)
+    print(f'season is {season}')
+    print(personalities)
 
 
     # get data & turn to dataframe
+    print('about to get the athena seasons')
     stats = get_athena_season(season, starter_packs, personalities, verbose=verbose) #output info 
     param_choices = [{key: stringify_if_listlike(val) for (key, val) in personality.items() if key in MALLEABLE_PARAMS} for personality in personalities] #input info
     combined_info = {i: dict(stats[i], **param_choices[i]) for i in range(len(personalities))}
@@ -357,6 +367,7 @@ def athena_param_sweep(season, num_trials, testing, verbose=False):
     df['num_trials'] = num_trials
     df['seed'] = SEED
     df['season'] = season
+    print(f'season is {season}')
 
     # save all
     path = DROPBOX_PATH + "Simulation/athena_Simulation/param_sweep/data.csv"
@@ -481,6 +492,16 @@ if __name__ == '__main__':
     df['num_trials'] = num_trials
     print(df)
     '''
+
+    ''' The default sweep when you are testing the first model trained well - Should score crazy points like 2500+'''
+    season, num_trials = 2122, 2 # 5 mins * 2 * 4 = 40 mins
+    testingdefault = {'field_model_suites': [[['full_squared_error']], [['full']]], 
+                'bench_factors' : [(.075,.0075), (0.1, 0.01)]
+            }
+    print('ABOUT TO CALL')
+    df = athena_param_sweep(season, num_trials, testingdefault)
+
+    raise Exception('done')
     
     ''' actually doing param sweeps ''' 
     mixed = [list(range(1,19)), list(range(19, 39))]

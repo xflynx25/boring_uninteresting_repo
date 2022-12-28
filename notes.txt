@@ -1,0 +1,36 @@
+8/4/22
+------
+Trying a new preseason.py
+Also, want to have output of running to update a txt file, and will be displayed to me 
+    on bash startup. This way, as long as I open bash every day, I will know whether I need 
+    to do something. This is all foiled if I can't pull my information though bcz can't log in. 
+Maybe I can use the same method as I did for the top players teams, to get information about myself.
+
+8/13/22
+-------
+You have to after the first week pull the backup odds into your folder or else whenever there
+    is odds that can't resolve it will throw an error.
+We get nice prints about the odds situations but isn't in human readable completely so hard to debug
+Maybe they flag accounts. athenap and mercury were working for several iterations, but athena.a is getting the state timeout
+    problem with login which means they used a captcha. 
+Processed Players is taking 23.44 minutes, this seems long for week 2. Lets continue to keep track. (although only 1nc a week so nbd)
+
+8/16/22
+-------
+Trying to put a priority order on things:
+1) Put it on git
+1.1) see if you can recover the old version to practice
+2) fork the overseer file anyways and make the old one OldOverseer.py 
+3) The new one doesn't do these asyncio pick team, make transfer, get team 
+4) look at the odds and figure outhow to make human visible printing
+5) Implement the new overseer methods 
+6) Organize the data notetaking files better. 
+
+
+8/23/22
+-------
+The new method is working, although a few things need to be ironed out to maximize automation. Like recording the purchase price, and then pulling the current price. 
+    & updating the inputs file when we are creating the outputs file at the end. 
+FEATURE: the user should need to read only a text file. It should paragraph itself and label by date like this, and should report things like:
+    no transfer decided today
+    transfer out ___ for ____, no chip, captain, vc = ___, ___, and bench order is ______, ______

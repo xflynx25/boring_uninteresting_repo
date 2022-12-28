@@ -1,4 +1,4 @@
-from constants import STRING_SEASON
+from private_versions.constants import STRING_SEASON
 import importlib 
 import Accountant_2helpers 
 importlib.reload(Accountant_2helpers)
@@ -129,6 +129,8 @@ def individual_game_odds(premier_league, final_odds, fixtures_df, current_gw, wh
     for date in unique_dates_this_week:
         week_fixtures = week_fixtures + [x[0] for x in get_fixture_ids(premier_league, date)]
     need_fixtures = set(week_fixtures).difference(final_odds['fixture_id'])
+    print('in individual game odds')
+    print(need_fixtures)
     clutch_odds = pd.DataFrame(get_bet365_odds_by_fixtures(need_fixtures))
     
     available_odds = []
@@ -145,6 +147,21 @@ def individual_game_odds(premier_league, final_odds, fixtures_df, current_gw, wh
 
 ######################### Main Functions for Building Processed#########
 
+def get_raw_gw_df(season, gw):
+    stitching_a_404 = False
+    try: 
+        filename = VASTAAV_ROOT + season + '/gws/gw' + str(gw) + '.csv'
+        gw_df = get_df_from_internet(filename)
+    except Custom404Exception:
+        backup_datacollection_path = MANUAL_VASTAAV_ROOT + 'gw' + str(gw) + '.csv'
+        previous_player_raw = pd.read_csv(DROPBOX_PATH + 'player_raw.csv', index_col=0)
+        manually_replace_vastaav_this_week(gw, backup_datacollection_path, previous_player_raw)
+        gw_df = safe_read_csv(backup_datacollection_path)
+        print('backup collection seemed to work')
+        stitching_a_404 = True 
+        VASTAAV_NO_RESPONSE_WEEKS.append(gw) 
+    return gw_df, stitching_a_404
+
 def online_raw_player_gw(season, gw):
     #element= id, round= gw, name= string, opponent_team= id number, value= whole number, was_home=boolean
     playerMETAstats = ['round', 'element', 'value', 'was_home'] #maybe get rid of was_home and opponent_team if can get somewhere else
@@ -156,19 +173,7 @@ def online_raw_player_gw(season, gw):
     #big_error_keys = ['errors_leading_to_goal', 'errors_leading_to_goal_attempt']
  
     print('in online_raw_player_gw... season= ', season, 'gw= ', gw)
-    stitching_a_404 = False
-    try: 
-        filename = VASTAAV_ROOT + season + '/gws/gw' + str(gw) + '.csv'
-        gw_df = get_df_from_internet(filename)
-    except Custom404Exception:
-        backup_datacollection_path = MANUAL_VASTAAV_ROOT + 'gw' + str(gw) + '.csv'
-        previous_player_raw = pd.read_csv(DROPBOX_PATH + 'player_raw.csv', index_col=0)
-        manually_replace_vastaav_this_week(gw, backup_datacollection_path, previous_player_raw)
-        gw_df = pd.read_csv(backup_datacollection_path, index_col=0)
-        print('backup collection seemed to work')
-        stitching_a_404 = True
-        VASTAAV_NO_RESPONSE_WEEKS.append(gw)
-
+    gw_df, stitching_a_404 = get_raw_gw_df(season, gw)
 
     # get non-statistics and non-processed data
     meta = gw_df[playerMETAstats]
@@ -391,7 +396,7 @@ def transfer_regularizer_for_current(df, current_gw, total_players):
         for col in ['transfers_balance', 'transfers_in', 'transfers_out']:
             std_transfers[col].values[:] = 0
     return std_transfers
-
+ 
 
 
 
@@ -466,7 +471,7 @@ def patch_odds(odds_df, database, fixtures_df, current_gw):
                 home = patch_converter[homeName]
                 away = patch_converter[awayName]
                 target_match = database.loc[(database['HomeTeam']==home) & (database['AwayTeam']==away)].reset_index(drop=True)
-                print('home/away/match is ', home, away, target_match)
+                print('home/away/match is ', home, away, target_match.shape)
 
                 # if there is no matching value check if it is a rescheduled game using fixtures df
                 # if not... raise exception because then there is a match we are missing
@@ -477,9 +482,8 @@ def patch_odds(odds_df, database, fixtures_df, current_gw):
                     away = super_converter[fix[2]]
                     match = fixtures_df.loc[(fixtures_df['team']==home)&(fixtures_df['was_home']==1)&(fixtures_df['opponent']==away)]
                     earliest_possible = max(kickoff_dates)
-                    print(match['kickoff_time'], earliest_possible, 'we are in a possible exception scenario if 2 > 1')
                     if match['kickoff_time'].iloc[0] < earliest_possible: #otherwise its a rescheduled game
-                        print("No backup data for this match: " + str(fixture_id))
+                        print("No backup data for this match: WILL BE AUTOCORRECTED HOPEFULLY EEEK" + str(fixture_id))
                         continue
                         #raise Exception("No backup data for this match: " + str(fixture_id))
                     else:
@@ -492,6 +496,8 @@ def patch_odds(odds_df, database, fixtures_df, current_gw):
                 new_rows.append( [fixture_id, oddsH, oddsD, oddsA] )
                 
     patched_odds = pd.DataFrame(new_rows, columns=['fixture_id','oddsH', 'oddsD', 'oddsA'])
+    print('patched odds for this week\n\n')
+    print(patched_odds)
     final_odds = pd.concat([patched_odds, odds_df], axis=0, ignore_index=True, sort=True)
     return final_odds
 

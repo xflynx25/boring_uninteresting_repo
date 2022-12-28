@@ -15,3 +15,30 @@ make sure vastaav is still collecting data
 Might need to go in and run patch=True on update_odds_df() in Accountant. Right now, there is no way to determine whether
     we have missed a week of data and just have many canceled games data recorded - or if it is a normal situation. Should 
     eventually correct itself once the excess games start getting played
+
+If you miss odds go to the website: https://www.football-data.co.uk/englandm.php 
+
+
+YearINT below is 2022 not 2122 for the 21-22 season. We use other format for database. 
+
+YEARLY MAINTANENCE: 
+    END OF SEASON (collecting the data):
+        *) Season Ends, gw38 is played.
+        1) Create new folder Root/Our_Datasets/Yearstring
+        2) Copy fix_df, odds, player_raw, team_raw csvs to this folder
+        3) Pull the backup odds from https://www.football-data.co.uk/englandm.php, save in folder as {YearINT}_odds_online.csv
+        4) Uncomment Accountant.main, and run Accountant.py
+        5) Move all the csv and log_exceptions.txt files from Root into a new folder called Root/PastSeasonData/end_season_{YearINT}_backupexcel
+    
+    OVER SUMMER (training the models): 
+        1) Move the models from Current (besides wildcard_copying) into a new folder called Root/models/Yearly/{yearINT}
+        2) Add the latest season int to models.py.season_strings
+        3) Run the first 2 cells in models.py to train quick 'full' and 'full_squared_error' suites
+        4) Copy/Paste a past seasons keeper models
+        4) Run 'Evaluator.py validate_new_models' to run a quick test on last year, and check the 
+            resulting csv after about an hour to make sure they produced 3000+ point seasons 
+        5) Delete the quick production that just happened
+        5) Run the first and last (3rd) cell of models.py to produce all the suites, this will take days
+
+
+    PRESEASON (setting the constants and drafting): 

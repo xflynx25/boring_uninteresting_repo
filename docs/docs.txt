@@ -13,3 +13,12 @@
 *) Installation & Setup (Future)
     1) Fill out the fields in the config files 
     2) Run the setup.py
+
+
+*) Modern Version with speciesism (captcha) implemented
+    1) the script is run every day. Once per week it does transfers. And a few other days
+        it will pick team.
+    2) You check the human_outputs.csv file to see what you must do on the front end
+    3) If you miss a day of this, you will have to retype the human_inputs.csv, as well 
+        as the made transfers today accountant sheet. 
+    4) Currently, need to manually put in the score per week. 

@@ -8,7 +8,7 @@
 
 from Requests import proper_request
 from general_helpers import login_to_website, logout_from_website
-from constants import DROPBOX_PATH, LEAGUE_FETCHING_LOGIN_CREDENTIALS, LEAGUE_FETCHING_NUM_PLAYERS_ON_PAGE, WILDCARD_2_GW_START
+from private_versions.constants import DROPBOX_PATH, LEAGUE_FETCHING_LOGIN_CREDENTIALS, LEAGUE_FETCHING_NUM_PLAYERS_ON_PAGE, WILDCARD_2_GW_START
 from selenium import webdriver
 driver = webdriver.Chrome() #webdriver.Firefox()
 HOSTNAME = 'https://fantasy.premierleague.com'

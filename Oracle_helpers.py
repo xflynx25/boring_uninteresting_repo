@@ -4,7 +4,7 @@ import math
 from RandomForest import randomForestRegression
 import pickle
 from general_helpers import drop_columns_containing, get_columns_containing
-from constants import MAX_FORWARD_CREATED
+from private_versions.constants import MAX_FORWARD_CREATED
 import joblib
 
 # players that play less than this many minutes in the whole season will be dropped
@@ -158,12 +158,16 @@ def train_rf_with_threshold(X,y,n,threshold, crossval=False, num_rounds=2, metri
 
     def get_good_feature_columns_threshold(xx, yy, thresh): #problem is this isn't a descent so features might not be best
         # train 2 models 100 trees on full, cut features below threshold in both
-        good_features_1 = randomForestRegression(xx, yy, 100).feature_importances_ > thresh
-        good_features_2 = randomForestRegression(xx, yy, 100).feature_importances_ > thresh
+        print('regression1')
+        THRESHOLDTREES = 100
+        good_features_1 = randomForestRegression(xx, yy, THRESHOLDTREES).feature_importances_ > thresh
+        print('regression2')
+        good_features_2 = randomForestRegression(xx, yy, THRESHOLDTREES).feature_importances_ > thresh
         good_features = good_features_1 | good_features_2
         return [col for col, good in zip(xx.columns, good_features) if good]
 
     if crossval:
+        print('doing crossval')
         round_splits = [np.random.rand(X.shape[0]) < 0.8 for i in list(range(num_rounds))]
         scores = {}
         features = {}
@@ -184,6 +188,7 @@ def train_rf_with_threshold(X,y,n,threshold, crossval=False, num_rounds=2, metri
                 break
 
             X_prev = X[feature_options]
+            print('about to do a regression for feature importance')
             feature_importances = randomForestRegression(X_prev, y, 100).feature_importances_ 
             good_features = get_good_features(feature_options, feature_importances, num_features) 
                  
@@ -211,6 +216,7 @@ def train_rf_with_threshold(X,y,n,threshold, crossval=False, num_rounds=2, metri
 
 
     if not crossval: 
+        print('no crossval')
         chosen_features = get_good_feature_columns_threshold(X, y, threshold)
 
     print("Original: ", X.columns.size, "   New: ", len(chosen_features))

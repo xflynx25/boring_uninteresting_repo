@@ -1,4 +1,4 @@
-from constants import DROPBOX_PATH, TM_FOLDER_ROOT
+from private_versions.constants import DROPBOX_PATH, TM_FOLDER_ROOT
 from general_helpers import get_data_df, get_meta_gwks_dfs, get_counts
 import pandas as pd
 import random
@@ -119,7 +119,7 @@ def get_league_player_starting_team(season, rank, league, interval):
     return players, pick_team
 
     
-from constants import DROPBOX_PATH
+from private_versions.constants import DROPBOX_PATH
 import pandas as pd
 # @param: for saving purposes, params is dict of bools (transfers, each chip, change_captain)
 # @return: save into the csv a constructed season
@@ -285,10 +285,9 @@ def compute_all_transfer_dfs(season, folder, data_df, all_suites):
             gw = current_gw_stats['gw'].to_list()[0] 
             keepers, health_keepers, outfield, health_outfield = keeper_outfield_split(current_gw_stats, health_df)
             if mod_type == 'field':
-                # put the year before the model to seperate the previously computed models from the current ones
-                full_transfer_market = handle_field_players([f'{season}/{model}'], outfield, health_outfield, gw, name_df, preloaded=secret_dict)
+                full_transfer_market = handle_field_players([f'{season}/{model}'], outfield, health_outfield, gw, name_df, preloaded=secret_dict, model_folder='Yearly')
             elif mod_type == 'keeper':
-                full_transfer_market = handle_keepers([f'{season}/{model}'], keepers, health_keepers, gw, name_df, preloaded=secret_dict)
+                full_transfer_market = handle_keepers([f'{season}/{model}'], keepers, health_keepers, gw, name_df, preloaded=secret_dict, model_folder='Yearly')
             full_transfer_market['gw'] = gw
             all_gwks.append(full_transfer_market)
 
@@ -328,6 +327,7 @@ def generate_x_random_starting_teams(season, x):
                     joined_later_than_gw_1 = False
 
     else: #don't have their season data so make random teams
+        print('making a random team')
         TARGET_PRICE = [980, 1000] #cost between 98 and 100 mil
         pos_dict = {
             1: 2, 2: 5, 3: 5, 4:3
@@ -439,8 +439,8 @@ def make_secret_dict(season, model_suite):
     secret_dict = {}
     for model_suite in model_suites:
         season_modelsuite = f'{season}/{model_suite}'
-        print(DROPBOX_PATH + f"models/Current/{season_modelsuite}")
-        os.chdir(DROPBOX_PATH + f"models/Current/{season_modelsuite}")
+        print(DROPBOX_PATH + f"models/Yearly/{season_modelsuite}")
+        os.chdir(DROPBOX_PATH + f"models/Yearly/{season_modelsuite}")
         secret_dict[season_modelsuite] = {}
         for filename in os.listdir():
             #print(filename)
@@ -528,17 +528,17 @@ if __name__ == '__main__':
 
     ''' WE PRECOMPUTED THE MODELS FOR USE IN WILDCARD FUNCTION ''' # WARNING, USING MODEL THAT WAS TRAINED ON THESE YEARS
     #### WE HAVE WRITTEN OVER THIS A LITTLE TO JUST DO THE KEEPER MODELS 
-    for season in [2021]:# (1718, 1617, 1819):
+    for season in [2122]:# (1718, 1617, 1819):
         print('doing season ', season)
         data_df = get_data_df(20, season)
-        all_suites = [FIELD_MODELS, KEEPER_MODELS]
-        #all_suites = [[],KEEPER_MODELS]
+        #all_suites = [FIELD_MODELS, KEEPER_MODELS]
+        all_suites = [[],KEEPER_MODELS]
         compute_all_transfer_dfs(season, TM_FOLDER_ROOT + str(season) + '/', data_df, all_suites)
         
-        special_precomputes = {
-            'field_all_batch': FIELD_MODELS, 'keeper_all_batch': KEEPER_MODELS, 'field_early_transfer_batch':FIELD_MODELS_EARLY
-        }
-        #special_precomputes = {'keeper_all_batch': KEEPER_MODELS}
+        #special_precomputes = {
+        #    'field_all_batch': FIELD_MODELS, 'keeper_all_batch': KEEPER_MODELS, 'field_early_transfer_batch':FIELD_MODELS_EARLY
+        #}
+        special_precomputes = {'keeper_all_batch': KEEPER_MODELS}
         for name, combos in special_precomputes.items():
             create_special_model_combos(TM_FOLDER_ROOT + str(season) + '/', name, combos) 
     

@@ -15,10 +15,11 @@
 import time
 from datetime import datetime
 import importlib 
-from constants import INT_SEASON_START, STRING_SEASON
+from private_versions.constants import INT_SEASON_START, STRING_SEASON
 import Accountant_helpers 
 importlib.reload(Accountant_helpers)
 from Accountant_helpers import * #helper functions
+from private_versions.constants import VERBOSITY 
 
 PLAYER_DB = DROPBOX_PATH + r'player_raw.csv'
 TEAM_DB = DROPBOX_PATH + r'team_raw.csv'
@@ -60,7 +61,9 @@ def make_and_save_health_df(gw):
 
 # prices and day that they were that price in absolute day 
 def make_and_save_price_df():
-    print('entered')
+    '''Notifier'''
+    if VERBOSITY['Accountant_Main_Loop_Function_Notifiers']:
+        print('in price df')
     day = get_current_day()
     saved_path = DROPBOX_PATH + "price_df.csv"
     url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
@@ -92,6 +95,10 @@ def make_pseudohealth_df_offline(elements):
         also returns the current_gw we are on
 '''
 def make_fixtures_df(season, ignore_gwks=[]):
+    '''Notifier'''
+    if VERBOSITY['Accountant_Main_Loop_Function_Notifiers']:
+        print('in fixtures df')
+
     relevant = ['event', 'team_h', 'team_a', 'kickoff_time']
     url = 'https://fantasy.premierleague.com/api/fixtures/'
     response = proper_request("GET", url, headers=None)
@@ -105,8 +112,8 @@ def make_fixtures_df(season, ignore_gwks=[]):
         row = row[1]
         ''' WE DON'T ACTUALLY HAVE TO SCHEDULE IT, WHEN THE TIME COMES IT WILL APPEAR 
             ||| BUTTTT, WE USE IT FOR PATCH ODDS SO WE KEEP'''
-        if math.isnan(row['gw']): #'schedule' for last day of season 
-            row['gw'] = 38
+        if math.isnan(row['gw']): #'schedule' for last day of season, gw 39 (which we can use in counting in odds)
+            row['gw'] = 39
             row['kickoff_time'] = last_date
         team1 = row[row.index]
         team1.index = ['gw', 'team', 'opponent', 'kickoff_time']
@@ -135,6 +142,9 @@ def make_fixtures_df(season, ignore_gwks=[]):
         current_gw = int( min( df_raw.loc[df_raw['started']==False]['event'] ) )
     except: #just for testing after season ends, come back and delete
         current_gw = 38
+
+    '''Make the gw integers'''
+    final_df = final_df.astype({'gw':'int'})
         
     final_df.to_csv(DROPBOX_PATH + "fix_df.csv") #important to keep this up to date for postseason stuff
     return final_df, current_gw
@@ -142,48 +152,84 @@ def make_fixtures_df(season, ignore_gwks=[]):
 ''' 2 api calls to get all available odds for the league, adds to the csv'''
 # uses additional api calls if the big call doesn't take care of all those in fixtures_df before current_gw
 def update_odds_df(fixtures_df, current_gw, patch=False):
-    print('in odds df')
+    '''Notifier'''
+    if VERBOSITY['Accountant_Main_Loop_Function_Notifiers']:
+        print('in odds df')
+
+    '''Get the weekly odds from online'''
     premier_league = get_premier_league_id(INT_SEASON_START)
     week_odds = get_bet365_odds(premier_league)
 
+    '''Parse the odds into matches'''
     available_odds = []
     for match in week_odds.items():
         group = [ match[0],match[1][0],match[1][1],match[1][2] ]
         available_odds.append(pd.Series(group, index=['fixture_id','oddsH', 'oddsD', 'oddsA']))
-    week = pd.concat(available_odds, axis=1, ignore_index=True).T
 
-    odds_df =  safe_read_csv(ODDS_DB)
-    try:
-        odds_df = odds_df.loc[~odds_df['fixture_id'].isin(week['fixture_id'])] #replaces already entered
-    except KeyError:
-        pass #just the first time opening it 
-    final_odds = pd.concat([odds_df, week], axis=0, sort=True).reset_index(drop=True)
+    '''Add into ODDS database'''
+    if len(available_odds) > 0: # this case handling the postseason work when none for the gw
+        week = pd.concat(available_odds, axis=1, ignore_index=True).T
+        odds_df =  safe_read_csv(ODDS_DB)
+        try:
+            odds_df = odds_df.loc[~odds_df['fixture_id'].isin(week['fixture_id'])] #replaces already entered
+        except KeyError:
+            pass #just the first time opening it 
+        final_odds = pd.concat([odds_df, week], axis=0, sort=True).reset_index(drop=True)
+    else: 
+        final_odds =  safe_read_csv(ODDS_DB)
+
     print('the matches and then the odds')
     print(week_odds)
     print(final_odds)
+    '''Potential failures because of rescheduled gwks'''
+    rescheduled_games = fixtures_df.loc[fixtures_df['gw']==39].shape[0] // 2
 
-    '''look at ones this week in case general func didn't get them'''
-    first_patch = False
-    if fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2 > final_odds.shape[0]: #not all the odds , first term has both representations of the week
-        first_patch = True
-    if first_patch:
-        clutch_odds = individual_game_odds(premier_league, final_odds, fixtures_df, current_gw) #from helpers
-        final_odds = pd.concat([final_odds, clutch_odds], axis=0, sort=True).reset_index(drop=True)
-    
-    '''do a soft check to see if were missing things, this might not catch if there have been game delays which earlier had odds,
-            or we have recorded doubles" odds'''
-    print(fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2, final_odds.shape[0])
-    if fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2 > final_odds.shape[0]: #not all the odds , first term has both representations of the week
+    '''Replace any previous failures using backup database'''
+    # Might struggle if odds have been recorded earlier for things postponed, bcz 1 extra odds in there
+    # Might struggle with dgw odds?
+    print(fixtures_df['gw'].unique())
+    print(fixtures_df)
+    print(current_gw)
+    completed_games = fixtures_df.loc[fixtures_df['gw']<current_gw].shape[0] // 2
+    recorded_games =  final_odds.shape[0]
+    print('Games Played: ', completed_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
+    if completed_games + rescheduled_games > recorded_games: 
         patch = True
     if patch:
+        print('patching')
         '''manual patching'''
-        relevant = ['Date', 'HomeTeam', 'AwayTeam', 'B365H', 'B365D', 'B365A']
-        print(BACKUP_ODDS)
-        print('thats the pirnt')
+        relevant = ['Date', 'Team', 'AwayTeam', 'B365H', 'B365D', 'B365A']
         database = pd.read_csv(BACKUP_ODDS, index_col=0)[relevant]
-        final_odds = patch_odds(final_odds, database, fixtures_df, current_gw)        
-    print(first_patch, patch, 'these were the patches.')
+        print('Backup odds incoming at: ', BACKUP_ODDS)
+        print(database)
+        final_odds = patch_odds(final_odds, database, fixtures_df, current_gw)  
+
+
+    '''Fill in anything missing, including this week, targetting just their specific game id'''
+    '''Currentally skipping because don't see much use in it and will just result in wasted api calls'''
+    #requested_games = fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2 
+    #recorded_games =  final_odds.shape[0]
+    #print('Requested games: ', requested_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
+    #if requested_games + rescheduled_games > final_odds.shape[0]: 
+    #    print('secondary patching')
+    #    clutch_odds = individual_game_odds(premier_league, final_odds, fixtures_df, current_gw) #from helpers
+    #    final_odds = pd.concat([final_odds, clutch_odds], axis=0, sort=True).reset_index(drop=True)
+
+    '''Save this data - as it is accurate'''
     final_odds.to_csv(ODDS_DB)
+
+    
+    '''Fill in anything missing, including this week, with an estimate of their previous'''
+    requested_games = fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2 
+    recorded_games =  final_odds.shape[0]
+    print('Requested games: ', requested_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
+    if requested_games + rescheduled_games > final_odds.shape[0]: # or True if you know you need to patch things this week, don't know why this check would fail though
+        print('forceful odds filling')
+        print('IMPLEMENT')
+        print('Actually, hard to implement because we can"t know if we need odds, so this will need to be in conjunction with the clutch odds game determination system')
+
+    return final_odds
+        
 
 # Update Player
 ### Vaastav Gws, (redundancy here if miss week it will recover)
@@ -204,6 +250,9 @@ def update_player_previous(season, current_gw):
     }
     team_dict = teamname_to_id_converter(season)
     '''
+    '''Notifier'''
+    if VERBOSITY['Accountant_Main_Loop_Function_Notifiers']:
+        print('in update player previous')
 
     if current_gw == 1:
         return
@@ -226,14 +275,20 @@ def update_player_previous(season, current_gw):
     for gw in range(earliest_replacement, current_gw):
         player_gw = online_raw_player_gw(season, gw)
         if gw in VASTAAV_NO_RESPONSE_WEEKS: 
-            without_transfers = drop_columns_containing(['transfers'], player_gw)
-            previous_week_transfers = get_columns_containing(['element', 'transfers'], players.loc[players['gw']==gw-1])
-            player_gw = pd.merge(without_transfers, previous_week_transfers, how='left')
+            # If there were no games the previous week, w_t reads an expty df, p_w_t reads the proper thing since transfers still went on
+            if player_gw.shape[0] == 0:
+                player_gw = pd.DataFrame(columns=players.columns)
+            else: 
+                without_transfers = drop_columns_containing(['transfers'], player_gw)
+                previous_week_transfers = get_columns_containing(['element', 'transfers'], players.loc[players['gw']==gw-1])
+                print(without_transfers, previous_week_transfers)
+                player_gw = pd.merge(without_transfers, previous_week_transfers, how='left')
         '''
         player_gw['position'] = player_gw.apply(lambda x: position_dict[x['position']], axis=1) 
         player_gw['team'] = player_gw.apply(lambda x: team_dict[x['team']], axis=1)
         '''
-        players = pd.concat([players, player_gw], axis=0, sort=True)
+        if player_gw.shape[0] > 0: # skipping fully blank gameweeks
+            players = pd.concat([players, player_gw], axis=0, sort=True)
 
     # only save the ones that we got from the trusted mothersource, vaastav
     good_data_weeks = players.loc[~(players['gw'].isin(VASTAAV_NO_RESPONSE_WEEKS))]
@@ -270,10 +325,9 @@ def update_player_current(prev_week_players, current_gw):
 # Update Team 
 ### Fixtures DF for 'gw', 'day', 'hour', 'team', 'opponent', 'was_home'
 ### API for 14 stats for all games w gw - 1 
-def update_team_previous(current_gw, fixtures_df):
+def update_team_previous(current_gw, fixtures_df, odds_df):
     if current_gw == 1:
         return
-    odds_df = safe_read_csv(ODDS_DB)
     teams = safely_get_database(TEAM_DB, current_gw)
 
     try:
@@ -327,10 +381,12 @@ def update_team_previous(current_gw, fixtures_df):
                     row = correct_odds_if_necessary(row, odds_df, teams)
                     new_rows.append(row)
 
-        stat_cols = pd.concat(new_rows, axis=1).T
-        df = df[['gw', 'day', 'hour', 'team', 'opponent', 'was_home']]
-        full_gw = pd.merge(df, stat_cols, how='left', left_on=['team', 'opponent'], right_on = ['team', 'opponent'])
-        teams = pd.concat([teams, full_gw], axis=0, ignore_index=True, sort=True)
+        # need to account for the empty gameweeks in team update
+        if len(new_rows) > 0:
+            stat_cols = pd.concat(new_rows, axis=1).T
+            df = df[['gw', 'day', 'hour', 'team', 'opponent', 'was_home']]
+            full_gw = pd.merge(df, stat_cols, how='left', left_on=['team', 'opponent'], right_on = ['team', 'opponent'])
+            teams = pd.concat([teams, full_gw], axis=0, ignore_index=True, sort=True)
     
     print('size of previous weeks week teams df: ', teams.shape)
     teams.to_csv(TEAM_DB)
@@ -340,8 +396,7 @@ def update_team_previous(current_gw, fixtures_df):
 # Next Week Team
 ### Use Fixtures DF to get 'gw', 'day', 'hour', 'team', 'opponent', 'was home'
 ### Use API to get oddsW, oddsD, oddsL for all games w gw, store odds for matches in seperate df
-def update_team_current(current_gw, fixtures_df):
-    odds_df = safe_read_csv(ODDS_DB)
+def update_team_current(current_gw, fixtures_df, odds_df):
     teams = safely_get_database(TEAM_DB, current_gw)
 
     df = fixtures_df[['gw', 'day', 'hour', 'team', 'opponent', 'was_home', 'kickoff_time']]
@@ -418,12 +473,12 @@ def processing_overseer(current_gw, form_lengths, forward_pred_lengths, fixtures
 def current_week_full_stats(season, form_lengths, forward_pred_lengths, ignore_gwks=[]):
     fixtures_df, current_gw = make_fixtures_df(season, ignore_gwks=ignore_gwks)
     print('currently thinks it is gameweek ', current_gw, ' because that is when the first unplayed game was')
-    update_odds_df(fixtures_df, current_gw, patch=False) # set patch to true if there have been canceled games this season screwing up the odds
+    odds_df = update_odds_df(fixtures_df, current_gw, patch=False) # set patch to true if there have been canceled games this season screwing up the odds
 
     raw_players = update_player_previous(season, current_gw) 
     raw_players = update_player_current(raw_players, current_gw)
-    update_team_previous(current_gw, fixtures_df)
-    update_team_current(current_gw, fixtures_df)
+    update_team_previous(current_gw, fixtures_df, odds_df)
+    update_team_current(current_gw, fixtures_df, odds_df)
     print('updated all tables') # full raw dataset
     
     total = processing_overseer(current_gw, form_lengths, forward_pred_lengths, fixtures_df, raw_players)
@@ -439,6 +494,7 @@ def finish_recording_season_gw38(season):
     redefine_globals(prefix)
     fixtures_df = pd.read_csv(prefix + "fix_df.csv", index_col=0)
     current_gw = 39
+    update_odds_df(fixtures_df, current_gw, patch=False) # set patch to true if there have been canceled games this season screwing up the odds
     update_player_previous(season, current_gw) 
     update_team_previous(current_gw, fixtures_df)
     print('updated all tables')
@@ -545,12 +601,13 @@ def update_chip_db(folder, gw, wildcard_pts, freehit_pts, captain_pts, bench_pts
     all_chips.to_csv(folder+'chips.csv')
 
 
-# checks if overseer has completed this week
+# checks if overseer has completed the transfers this week
 def already_made_moves(folder, gw):
     try:
         path = folder + 'made_moves.csv'
         df = safe_read_csv(path)
-        truthality = gw in df['gw'].to_list()
+        did_things_df = df.loc[(df['chip']!='nothing_today')&(df['chip']!='pick_team_only')] #only when transfers or chips
+        truthality = gw in did_things_df['gw'].to_list()
         return truthality
     except: #first time doing this, ['gw'] will register error
         pd.DataFrame().to_csv(path)
@@ -604,5 +661,5 @@ def update_explored_today():
 if __name__ == "__main__":
     FORM_LENGTHS = [1,2,3,6]
     PREDICTION_LENGTHS = [1,2,3,4,5,6]
-    #finish_recording_season_gw38(STRING_SEASON)
-    #get_season_data_and_save(STRING_SEASON, FORM_LENGTHS, PREDICTION_LENGTHS)
+    finish_recording_season_gw38(STRING_SEASON)
+    #get_season_data_and_save(STRING_SEASON, FORM_LENGTHS, PREDICTION_LENGTHS) 

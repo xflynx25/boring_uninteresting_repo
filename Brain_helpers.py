@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np 
 from itertools import combinations
 from collections import Counter
-from constants import DROPBOX_PATH
+from private_versions.constants import DROPBOX_PATH
 import time
 import random
 from general_helpers import get_columns_containing, safer_eval
@@ -412,7 +412,7 @@ def search_v2(transfer_market, team_players, sell_value, num_transfers, num_opti
                 inb = set([x[1] for x in transfer_list])
                 outb = set([x[0] for x in transfer_list])
                 scoreboard.iloc[-1,:] = str(inb), str(outb), delta # should just replace last row
-                print("New guy on scoreboard: ", str(inb), str(outb), delta)
+                #print("New guy on scoreboard: ", str(inb), str(outb), delta)
                 scoreboard = scoreboard.sort_values('delta',ascending=False).reset_index(drop=True)
                 #scoreboard.sort_values('delta',ascending=False, inplace=True).reset_index(drop=True)
             return scoreboard, fail_heuristic

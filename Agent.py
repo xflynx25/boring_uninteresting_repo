@@ -5,7 +5,8 @@
 # 2) Pulling information from the website
 # 3) Pushing team information up to the website / email human
 ###########################################
-from general_helpers import safer_eval
+from datetime import datetime
+from general_helpers import safer_eval, difference_in_days, which_time_comes_first
 from Requests import proper_request
 import pandas as pd
 import aiohttp
@@ -132,7 +133,7 @@ async def current_team(email, password, user_id):
 
 # input: squad = list of elements in the players squad to check for injuries
 # output: dict {element: multiplier (0-1)}
-async def injury_penalties(gw, health_df, squad):
+def injury_penalties(gw, health_df, squad):
     bootstrap = bootstrap_data()
     gw_start_times = {x['id']:(int(x['deadline_time'][8:10]),int(x['deadline_time'][5:7]))\
         for x in bootstrap['events']}
@@ -145,7 +146,6 @@ async def injury_penalties(gw, health_df, squad):
         news = elements[player][1]
         status = health_df.loc[health_df['element']==player]['status'].to_list()[0]
         flagged = (status != 'a')
-
         if not flagged: #fully healthy
             multipliers[player] = 1
         elif percent_chance is None: #weird no info, use health
@@ -462,3 +462,26 @@ def login_and_get_info_selenium(email, password, team_id):
     login_to_website(driver, login_url, email, password)
 
     # do stuff
+
+
+def get_current_gw():
+    # get gw based off the date
+    def get_deadline_difference(gw):
+        deadline_date, deadline_time = get_deadline(gw)
+        current_date = [int(x) for x in datetime.utcnow().strftime('%Y-%m-%d').split('-')]
+        day_diff =  difference_in_days(current_date, deadline_date)
+        if day_diff > 0:
+            return day_diff
+        else: #check time diff 
+            current_time =  [int(x) for x in datetime.utcnow().strftime('%H:%M:%S').split(':')]
+            if which_time_comes_first(current_time, deadline_time) == 0: 
+                return 0
+            else:
+                return -1           
+    for gw in range(1, 39):
+        try:
+            if get_deadline_difference(gw) != -1:
+                break
+        except:
+            continue
+    return gw 

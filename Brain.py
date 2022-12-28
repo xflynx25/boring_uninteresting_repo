@@ -17,7 +17,7 @@ from Brain_helpers import kill_irrelevants_and_sort, check_feasibility_and_get_d
     get_points, get_starters_and_bench, find_healthy_best_captains, transfer_option_names, rename_expected_pts,\
     filter_transfering_healthy_players, get_bench_order, get_bench_order_with_keeper, randomly_shuffle_n_players,\
     search_v2, safer_eval
-from constants import WILDCARD_DEPTH_PARAM
+from private_versions.constants import WILDCARD_DEPTH_PARAM
 import time
 
 
@@ -96,13 +96,13 @@ def choose_top_transfer_n(scoreboard, full_transfer_market, team_players, sell_v
         return winner.drop(['totalRanking'])
 
     '''clean up the table for only relevant'''
-    print("Full transfermarket: ", full_transfer_market)
+    #print("Full transfermarket: ", full_transfer_market)
     all_playas = []
     for x in scoreboard['outbound'].to_list() + scoreboard['inbound'].to_list():
         all_playas += [i for i in safer_eval(x)]
-        for playa in set(all_playas):
-            print(f"Player {playa} = full:-: {full_transfer_market.loc[full_transfer_market['element']==playa]['expected_pts_full'].to_numpy()} anand next:-:{full_transfer_market.loc[full_transfer_market['element']==playa]['expected_pts_N1'].to_numpy()}")
-    print('og scoreboard\n', scoreboard)
+        #for playa in set(all_playas):
+            #print(f"Player {playa} = full:-: {full_transfer_market.loc[full_transfer_market['element']==playa]['expected_pts_full'].to_numpy()} anand next:-:{full_transfer_market.loc[full_transfer_market['element']==playa]['expected_pts_N1'].to_numpy()}")
+    #print('og scoreboard\n', scoreboard)
 
 
     scoreboard = scoreboard.loc[scoreboard['delta']>0] #drop extra rows in the case of not enough satisfiable transfers
@@ -272,7 +272,7 @@ allowed_healths=['a'], visualize_names=False, name_df = None):
     else:
         transfer_market = full_transfer_market.drop('expected_pts_N1', axis=1)
         team_players = full_team_players.drop('expected_pts_N1', axis=1)
-    print(team_players)
+    #print(team_players)
     iteration = 1
     n = 1
     # keep making 1 transfer till none good, then 2...etc till can't improve w 5 transfers
@@ -356,23 +356,32 @@ def play_chips_or_no(gw, chip_status, chip_threshold_dict, wildcard_pts, freehit
         'bench_boost': bench_pts,
         'triple_captain': captain_pts
     }
-    #print('this week chip scores: ', this_week_chip_scores, '\n chip thresholds: ', chip_threshold_dict)
+    print('this week chip scores: ', this_week_chip_scores, '\n chip thresholds: ', chip_threshold_dict)
+    print(earliest_chip_weeks)
     chip_qualities = {}
     for i, chip in enumerate(['wildcard', 'freehit', 'bench_boost', 'triple_captain']):
         last_gw = 38
         if chip =='wildcard': 
             last_gw = chip_status[chip][1]
-        status = [chip_status[chip][0] if chip=='wildcard' else chip_status[chip]][0]
+        status = (chip_status[chip][0] if chip=='wildcard' else chip_status[chip])
         threshold = chip_threshold_dict[chip]
+        print(chip_status, status, threshold, chip_threshold_dict)
         if threshold == 0:
             threshold += .00001 # (to avoid divide by 0)
         if not threshold: #Got a False because we didn't have any data for this chip yet
             continue
-        
+        print(gw, last_gw)
         score_to_beat = threshold*tailoff_coeff(gw, chip_threshold_tailoffs[i], last_gw)
+        print(tailoff_coeff(gw, chip_threshold_tailoffs[i], last_gw))
+        print(chip_threshold_tailoffs[i], score_to_beat)
         week_score = this_week_chip_scores[chip]
-        if week_score > score_to_beat and not(status) and earliest_chip_weeks[chip] <= gw:
-            chip_qualities[chip] = week_score/score_to_beat 
+        if week_score > score_to_beat:
+            print('beat a')
+            if not(status):
+                print('beat b')
+                if earliest_chip_weeks[chip] <= gw:
+                    print('beat c')
+                    chip_qualities[chip] = week_score/score_to_beat 
     
     if chip_qualities == {}:
         return 'normal'

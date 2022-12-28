@@ -23,7 +23,7 @@ from general_helpers import get_columns_containing, safe_make_folder, safer_eval
 import pandas as pd
 import time
 import math
-from constants import DROPBOX_PATH, UPDATED_TRAINING_DB, TRANSFER_MARKET_SAVED,  MAX_FORWARD_CREATED
+from private_versions.constants import DROPBOX_PATH, UPDATED_TRAINING_DB, TRANSFER_MARKET_SAVED,  MAX_FORWARD_CREATED
 from Oracle_helpers import save_model, load_model, drop_back_and_forward_features, train_rf_with_threshold,\
     drop_nan_rows, get_backward, long_term_benchwarmer, get_sets_from_name, blank_row, is_useful_model,\
     keeper_outfield_split, eliminate_players, nerf_players, save_market, visualize_top_transfer_market
@@ -66,6 +66,7 @@ def train_model_suite(training_db, folder, names, n, threshold, crossval=False, 
         
         #get the matrices for regression & train model
         X,y = drop_nan_rows(df, target_df)
+        print('training model')
         model, feature_names = train_rf_with_threshold(X,y,n,threshold, crossval=crossval, metric=metric, n_starter_cols=n_starter_cols)
         model_name = DROPBOX_PATH + 'models/' + folder + "/" + name + '.sav' 
         save_model((model, feature_names), model_name)
@@ -81,10 +82,10 @@ def train_model_suite(training_db, folder, names, n, threshold, crossval=False, 
 # Make Transfer Market (model-type)
 #@param: df with processed players, int gw
 #@return: transfer market df with (element, position, team, value, expected pts N1, expected pts full)
-def make_transfer_market(processed_players, gw, player_healths, model_suite, preloaded=False):
+def make_transfer_market(processed_players, gw, player_healths, model_suite, preloaded=False, model_folder = 'Current'):
     df = processed_players.loc[processed_players['gw']==gw].reset_index(drop=True)
     # Make Model Dict
-    model_dict = make_model_dict(gw, model_suite, preloaded=preloaded)
+    model_dict = make_model_dict(gw, model_suite, preloaded=preloaded, model_folder = model_folder)
     # Player Prediction
     single = this_week_predictions(df, model_dict, gw, 1)
     full = this_week_predictions(df, model_dict, gw, 'full')
@@ -137,8 +138,8 @@ def this_week_predictions(this_week_player_stats, model_dict, gw, length):
 #@param: int current gw
 #@return: model dictionary name to model for possible models we might want to use 
 # overloading this for use by evaluator helpers, if preloaded=False
-def make_model_dict(gw, model_suite, preloaded=False): 
-    chdir(DROPBOX_PATH + "models/Current/" + model_suite)
+def make_model_dict(gw, model_suite, preloaded=False, model_folder = 'Current'): 
+    chdir(DROPBOX_PATH + f"models/{model_folder}/" + model_suite)
     files = listdir()
 
     model_dict = {}
@@ -206,7 +207,7 @@ def change_team_players(full_transfer_market, team_players, transfers):
 #@param: list of transfer markets ('element','position','team','value', 'expected_pts_N1', 'expected_pts_full')
 #@return: expected points columns averaged from the markets
 # save gives the current_gw number if we're saving
-def avg_transfer_markets(transfer_markets, name_df=None, visualize=False, save=False, suite_names=[]):
+def avg_transfer_markets(transfer_markets, name_df=None, visualize=False, save=False, suite_names=[], model_folder='Current'):
     base_info = transfer_markets[0][['element','position','team','value','status']].sort_values('element').reset_index(drop=True)
 
     point_columns = []
@@ -215,7 +216,7 @@ def avg_transfer_markets(transfer_markets, name_df=None, visualize=False, save=F
         if save:
             market = suite_names[market_index]
             market_index += 1
-            path = DROPBOX_PATH + "models/Current/" + market + '/transfer_market_history.csv'
+            path = DROPBOX_PATH + f"models/{model_folder}/" + market + '/transfer_market_history.csv'
             save_market(save, df, path)
 
         df = df.sort_values('element').reset_index(drop=True)
@@ -258,7 +259,7 @@ def avg_transfer_markets(transfer_markets, name_df=None, visualize=False, save=F
 #have to deal with individual positions, dgw stuff, and early/late
 # ASSUMPTION: dgw models imply their no_dgw counterpart also has been trained
 # save gives the current_gw number if we're saving
-def handle_field_players(field_suites, outfield, health_outfield, gw, name_df, visualize=False, save=False, preloaded=False):
+def handle_field_players(field_suites, outfield, health_outfield, gw, name_df, visualize=False, save=False, preloaded=False, model_folder = 'Current'):
     individuals = False
     sparse_individuals = False
     dgwks = []
@@ -276,7 +277,7 @@ def handle_field_players(field_suites, outfield, health_outfield, gw, name_df, v
         elif suite == 'sparse_individuals':
             sparse_individuals = True
         else:
-            field_models.append(make_transfer_market(outfield, gw, health_outfield, suite, preloaded=preloaded))
+            field_models.append(make_transfer_market(outfield, gw, health_outfield, suite, preloaded=preloaded, model_folder = model_folder))
             ordered_field_suites.append(suite) #track suites
 
     if individuals:
@@ -287,7 +288,7 @@ def handle_field_players(field_suites, outfield, health_outfield, gw, name_df, v
             suite = suite_key[i]
             df_positional = outfield.loc[outfield['position']==float(i)]
 
-            positional_regr = make_transfer_market(df_positional, gw, health_outfield, suite, preloaded=preloaded)
+            positional_regr = make_transfer_market(df_positional, gw, health_outfield, suite, preloaded=preloaded, model_folder = model_folder)
             individual_field_models.append(positional_regr)
 
         players_ind_regressions = pd.concat(individual_field_models, axis=0)
@@ -301,7 +302,7 @@ def handle_field_players(field_suites, outfield, health_outfield, gw, name_df, v
         for i in (2,3,4):
             suite = suite_key[i]
             df_positional = outfield.loc[outfield['position']==float(i)]
-            positional_regr = make_transfer_market(df_positional, gw, health_outfield, suite, preloaded=preloaded)
+            positional_regr = make_transfer_market(df_positional, gw, health_outfield, suite, preloaded=preloaded, model_folder = model_folder)
             individual_field_models.append(positional_regr)
 
         players_sparse_ind_regressions = pd.concat(individual_field_models, axis=0)
@@ -333,12 +334,12 @@ def handle_field_players(field_suites, outfield, health_outfield, gw, name_df, v
             anti_option = 'no_' + option
             score_col = 'expected_pts' + score_type
             if yes.shape[0] == 0:
-                total = make_transfer_market(no, gw, health_outfield, anti_option, preloaded=preloaded)
+                total = make_transfer_market(no, gw, health_outfield, anti_option, preloaded=preloaded, model_folder = model_folder)
             elif no.shape[0] == 0:
-                total = make_transfer_market(yes, gw, health_outfield, option, preloaded=preloaded)
+                total = make_transfer_market(yes, gw, health_outfield, option, preloaded=preloaded, model_folder = model_folder)
             else:
-                yes_df = make_transfer_market(yes, gw, health_outfield, option, preloaded=preloaded)
-                no_df = make_transfer_market(no, gw, health_outfield, anti_option, preloaded=preloaded)
+                yes_df = make_transfer_market(yes, gw, health_outfield, option, preloaded=preloaded, model_folder = model_folder)
+                no_df = make_transfer_market(no, gw, health_outfield, anti_option, preloaded=preloaded, model_folder = model_folder)
                 total = pd.concat([yes_df, no_df], axis=0)
             these.append(total[base_info + [score_col]])
             
@@ -350,23 +351,23 @@ def handle_field_players(field_suites, outfield, health_outfield, gw, name_df, v
     if len(field_models) == 0: #no working models for this week
         print('WARNING: no working models this week gw', gw)
         return pd.DataFrame()
-    dffieldplayers = avg_transfer_markets(field_models, name_df, visualize=visualize, save=save, suite_names=ordered_field_suites)
+    dffieldplayers = avg_transfer_markets(field_models, name_df, visualize=visualize, save=save, suite_names=ordered_field_suites, model_folder = model_folder)
     return dffieldplayers
 
 # save gives the current_gw number if we're saving
-def handle_keepers(keeper_suites, keepers, health_keepers, gw, name_df, visualize=False,save=False, preloaded=False):
+def handle_keepers(keeper_suites, keepers, health_keepers, gw, name_df, visualize=False,save=False, preloaded=False, model_folder = 'Current'):
     keeper_models = []
     for suite in keeper_suites:
-        keeper_models.append(make_transfer_market(keepers, gw, health_keepers, suite, preloaded=preloaded))
+        keeper_models.append(make_transfer_market(keepers, gw, health_keepers, suite, preloaded=preloaded, model_folder = model_folder))
     if len(keeper_models) == 0: #no working models for this week
         return pd.DataFrame()
-    dfkeepers = avg_transfer_markets(keeper_models, name_df, visualize=visualize, save=save, suite_names=keeper_suites)
+    dfkeepers = avg_transfer_markets(keeper_models, name_df, visualize=visualize, save=save, suite_names=keeper_suites, model_folder = model_folder)
     return dfkeepers
 
 # @param: stats df, health df, models, info about anti-preferences, options
 # @return: the requested df with expected points for all the players
 def full_transfer_creation(current_gw_stats, health_df, field_suites, keeper_suites, bad_players, nerf_info,\
-    adjustment_information, name_df=None, visualize=False, force_remake=False, save=False):
+    adjustment_information, name_df=None, visualize=False, force_remake=False, save=False, model_folder='Current'):
 
     full_transfer_market = pd.read_csv(TRANSFER_MARKET_SAVED, index_col=0)
     if full_transfer_market.shape[0]==0 or force_remake: #if we want to remake the base transfer market
@@ -374,10 +375,10 @@ def full_transfer_creation(current_gw_stats, health_df, field_suites, keeper_sui
         keepers, health_keepers, outfield, health_outfield = keeper_outfield_split(current_gw_stats, health_df)
         
         ### NEW MODELS FOR FIELD PLAYERS ###
-        dffieldplayers = handle_field_players(field_suites, outfield, health_outfield, gw, name_df, visualize=visualize, save=save)
+        dffieldplayers = handle_field_players(field_suites, outfield, health_outfield, gw, name_df, visualize=visualize, save=save, model_folder=model_folder)
 
         ### NEW MODELS FOR KEEPERS ###
-        dfkeepers = handle_keepers(keeper_suites, keepers, health_keepers, gw, name_df, visualize=visualize, save=save)
+        dfkeepers = handle_keepers(keeper_suites, keepers, health_keepers, gw, name_df, visualize=visualize, save=save, model_folder=model_folder)
 
         ### COMBINING THE TWO ###
         full_transfer_market = pd.concat([dfkeepers, dffieldplayers],axis=0)
@@ -408,7 +409,8 @@ def create_wildcard_datapoint(current_gw_df, fix_df, bench, points_each_week, gw
     datapoint['gw'], datapoint['wks_till_expire'] = gw, (wildcard_end-gw if wildcard_end > gw else 38 - gw)
     datapoint['pts_season'], datapoint['pts_last_1'], datapoint['pts_last_3'], datapoint['pts_last_6'] =\
         [sum(past_pts[-x:]) for x in (len(past_pts), 1, 3, 6)]
-    datapoint['week_interval'] = fix_df.loc[fix_df['gw']==gw]['day'].to_list()[0] - fix_df.loc[fix_df['gw']==gw-1]['day'].to_list()[-1]
+    print(gw, fix_df)
+    datapoint['week_interval'] = fix_df.loc[fix_df['gw']==gw]['day'].to_list()[0] - max(fix_df.loc[fix_df['gw']<gw]['day'].to_list())
     for i in (1,3,6):
         double_teams = {team: sum([fix_df.loc[(fix_df['gw']==some_gw) & (fix_df['team']==team)].shape[0] > 1 for some_gw in list(range(gw, gw+i))])  for team in fix_df['team'].unique()}
         blank_teams =  {team: sum([fix_df.loc[(fix_df['gw']==some_gw) & (fix_df['team']==team)].shape[0] == 0.0 for some_gw in list(range(gw, gw+i))])  for team in fix_df['team'].unique()}

@@ -1,4 +1,4 @@
-from constants import DROPBOX_PATH
+from private_versions.constants import DROPBOX_PATH
 import pandas as pd
 from datetime import datetime
 from general_helpers import safe_read_csv
@@ -34,7 +34,7 @@ def main():
     
     # main chunk
     from Overseer import FPL_AI
-    from Personalities import personalities_to_run
+    from private_versions.Personalities import personalities_to_run
     for pers in personalities_to_run:
         ai = FPL_AI(**pers)
         ai.make_moves()

@@ -1,10 +1,11 @@
 import pandas as pd
-from constants import DROPBOX_PATH
+from private_versions.constants import DROPBOX_PATH
 from os import makedirs
 from Requests import proper_request
 from datetime import datetime
 import time
 import ast
+import sys, os
 
 #2019-08-10T11:30:00Z
 def difference_in_days(start_day, end_day):
@@ -185,6 +186,7 @@ def get_data_df(century, season):
     return data_df
 
 # will make the directory if needed 
+# make sure we are reading into a dataframe not a series
 def safe_read_csv(path):
     try:
         df = pd.read_csv(path, index_col=0)
@@ -265,3 +267,10 @@ def logout_from_website(driver, login_url):
         time.sleep(2)
         driver.find_element_by_link_text('Sign Out').click()
         time.sleep(1)
+
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
+
+# Restore
+def enablePrint():
+    sys.stdout = sys.__stdout__

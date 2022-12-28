@@ -4,7 +4,7 @@ It will also return the folder name.
 These models are called by user manually in create many model suites
 """
 #%%
-from constants import UPDATED_TRAINING_DB, DROPBOX_PATH
+from private_versions.constants import UPDATED_TRAINING_DB, DROPBOX_PATH
 CENTURY = 20
 from Oracle import train_model_suite
 from Oracle_helpers import load_model
@@ -12,7 +12,7 @@ from general_helpers import drop_columns_containing, get_columns_containing
 import time
 import pandas as pd 
 #TRAIN_DF = pd.read_csv(UPDATED_TRAINING_DB, index_col=0)
-season_strings = [f'{CENTURY}{sy}-{sy+1}' for sy in (16, 17, 18, 20)]
+season_strings = [f'{CENTURY}{sy}-{sy+1}' for sy in (16, 17, 18, 20, 21)]
 season_ints = [int(f[2:4] + f[5:7]) for f in season_strings]
 TRAIN_DF = pd.concat([pd.read_csv(f'{DROPBOX_PATH}Our_Datasets/{season_str}/Processed_Dataset_{season_int}.csv', index_col=0) for (season_str, season_int) in zip(season_strings, season_ints)], axis=0).reset_index(drop=True)
 TRAIN_DF = drop_columns_containing(['season_'], TRAIN_DF) #### IN CASE WE FORGET TO REMOVE FROM THE END OF SEASON IF THIS WAS NOT SOME SORT OF ONE TIME ERROR
@@ -97,11 +97,11 @@ def full_positional_representation_squared_error(folder):
 # all the representations
 def full_positional_representation_speedy(folder):
     df = FIELD_DF
-    train_model_suite(df, folder, FULL_MODEL_NAMES, 125, .004, n_starter_cols=N_STARTER_COLS, crossval=False, metric = 'mae')
+    train_model_suite(df, folder, FULL_MODEL_NAMES, 45, .004, n_starter_cols=N_STARTER_COLS, crossval=False, metric = 'mae')
 
 def full_positional_representation_squared_error_speedy(folder):
     df = FIELD_DF
-    train_model_suite(df, folder, FULL_MODEL_NAMES, 125, .004, n_starter_cols=N_STARTER_COLS, crossval=False, metric='mse')
+    train_model_suite(df, folder, FULL_MODEL_NAMES, 45, .004, n_starter_cols=N_STARTER_COLS, crossval=False, metric='mse')
 
 # all positions individually
 def individual_position(position, folder):
@@ -213,54 +213,8 @@ def print_model_features(folder, name, top_n='max'):
     for imp, name in associations:
         print(name, round(10**6*imp)/10**6)
 
+print('donezo')
 
-folder_names = ['early', 'dgw', 'dgw_upcoming', 'no_dgw', 'no_dgw_upcoming']
-
-EARLY_REMAINING_NAMES = ['1236-1-1']
-models = [lambda x: first_half_season(x, EARLY_REMAINING_NAMES), double_gw, double_gw_upcoming, no_double_gw, no_double_gw_upcoming]
-
-for folder, model in zip(folder_names, models):
-    print('starting')
-    start = time.time()
-    model(folder)
-    end = time.time() 
-    print("\n", folder, "took ", round((end-start)/60), " minutes\n\n")
-#%%
-#ALL 
-#FIELD_MODELS = ['full', 'full_squared_error','onehot', &&& full_positional_representation, full_positional_representation_squared_error, one_hot_only, 
-#FIELD_MODELS = ['priceless','no_ict','no_transfer_info', 
-FIELD_MODELS = ['no_ict_transfers_price','no_ictANY_transfers_price','early', 'late','no_dgw', 'no_dgw_upcoming']
-KEEPER_MODELS = ['keeper_engineering', 'keeper_engineering_squared_error', 'keeper_extra_crossval', 'keeper_no_price_mse']
-
-folder_names = ['no_dgw_upcoming']
-ICT_REMAINING_NAMES = ['1236-135-5', '1236-124-4', '1236-123-3', '1236-12-2']
-models = [lambda x: no_ict_index(x, model_names=ICT_REMAINING_NAMES), no_transfer_info, no_ict_transfers_price, no_ictany_transfers_price, first_half_season,\
-    second_half_season, no_double_gw, no_double_gw_upcoming]
-models = [no_double_gw_upcoming]
-
-
-for folder, model in zip(folder_names, models):
-    print('starting')
-    start = time.time()
-    model(folder)
-    end = time.time() 
-    print("\n", folder, "took ", round((end-start)/60), " minutes\n\n")
-
-# THE INDIVIDUAL PREDICTION SETS 
-
-folder_names = ['defenders', 'midfielders', 'forwards','defenders_sparse', 'midfielders_sparse', 'forwards_sparse']
-models = [
-    lambda x: individual_position(2, x), lambda x: individual_position(3, x), lambda x: individual_position(4, x),\
-    lambda x: individual_position_sparse(2, x), lambda x: individual_position_sparse(3, x), lambda x: individual_position_sparse(4, x)]
-
-for folder, model in zip(folder_names, models):
-    print('starting')
-    start = time.time()
-    model(folder)
-    end = time.time() 
-    print("\n", folder, "took ", round((end-start)/60), " minutes\n\n")
-
-#%%
 ''' TRAINING THE MODEL SUITES '''# %%
 # first train full and test a regular season make sure it is still working, then train all the models
 print(TRAIN_DF.shape)
@@ -275,8 +229,8 @@ for folder, model in zip(folder_names, models):
 
 
 #%%  For My Computer
-#folder_names = ['keeper_engineering', 'keeper_engineering_squared_error','keeper_extra_crossval','full']
-#models = [manual_keeper_engineering,manual_keeper_engineering_squared_error,keeper_extra_crossval, full_positional_representation]
+folder_names = ['keeper_engineering', 'keeper_engineering_squared_error','keeper_extra_crossval','full']
+models = [manual_keeper_engineering,manual_keeper_engineering_squared_error,keeper_extra_crossval, full_positional_representation]
 folder_names = ['no_transfer_info', 'full_squared_error','onehot', 'no_ict_transfers_price','no_dgw', 'no_dgw_upcoming']
 models = [no_transfer_info,full_positional_representation_squared_error, one_hot_only, no_ict_transfers_price, no_double_gw, no_double_gw_upcoming]
 
@@ -285,10 +239,11 @@ for folder, model in zip(folder_names, models):
     print('starting')
     start = time.time()
     model(folder)
-    end = time.time() 
+    end = time.time()  
     print("\n", folder, "took ", (end-start)/60, " minutes\n\n")
-# %% For Loaner Computer
-"""
+    
+""" # %% For Loaner Computer"""
+
 folder_names = ['defenders', 'midfielders', 'forwards', 'priceless', 'no_ict', 'dgw', 'early', 'late', 'dgw_upcoming']
 models = [
     lambda x: individual_position(2, x), lambda x: individual_position(3, x), lambda x: individual_position(4, x),\
@@ -297,11 +252,11 @@ models = [
 """
 folder_names = ['no_ictANY_transfers_price']
 models = [no_ictany_transfers_price]
-"""
+""" 
 """
 folder_names = ['keeper_no_price_mse']
 models = [keepers_no_price_mse]
-"""
+
 folder_names = ['defenders_sparse', 'midfielders_sparse', 'forwards_sparse']
 models = [
     lambda x: individual_position_sparse(2, x), lambda x: individual_position_sparse(3, x), lambda x: individual_position_sparse(4, x)]
