@@ -2,8 +2,10 @@ from calendar import week
 from statistics import variance
 from private_versions.Personalities import Athena_v10a, Athena_v10p
 from Accountant import already_made_moves
+
 import private_versions.constants as constants
 #import Accountant
+print(constants.DROPBOX_PATH)
 import Oracle 
 import Brain 
 import Agent 
@@ -151,21 +153,25 @@ class FPL_AI():
 
         if days_left == -1 or days_left > 5: # want to wait out the international breaks somewhat
             move_probability = 0
+
         print('Move probability is ', move_probability)
-        to_move = randomrandom() < move_probability
+        to_move = randomrandom() < move_probability 
         return to_move, to_move, gw
 
 
     # chip stuff is done before imputting to this function, this is just the readout for what your team should look like this week
     def update_human_outputs(self, necessary_meta, starters, bench_order, captain, vice_captain, this_week_chip):
         gw, name_df, new_team_players = necessary_meta
+        print('new_team_players', new_team_players)
+        print('starters and bench = ', starters, bench_order)
         cols = ['gw'] + [f'name_{x}' for x in range(1, 16)] + [f'player_{x}' for x in range(1, 16)] + ['captain', 'vc', 'chip']
         players = list(starters) + list(bench_order)
         players += list(set(new_team_players['element'].to_numpy()).difference(set(players)))
         print('players', players, len(players))
-        print(starters, len(starters))
-        print(bench_order, len(bench_order))
+        print('starters', starters, len(starters))
+        print('bench_order', bench_order, len(bench_order))
         names = [name_df.loc[name_df['element']==player]['name'].tolist()[0] for player in players]
+        print('NAMES = ', names)
         biglist = [gw] + names + players + [captain, vice_captain, this_week_chip]
         human_outputs_players = pd.DataFrame([biglist], columns = cols)
         safe_to_csv(human_outputs_players, self.folder + 'human_outputs.csv')
@@ -210,6 +216,8 @@ class FPL_AI():
             #    raise Exception("Have already done transfers for this week but not recorded")
             decision_args = [gw, already_transfered, fix_df]
             make_transfer_today, do_pick_team_today, gw = self.should_we_make_transfer_today(decision_args)
+            if constants.FORCE_MOVE_TODAY:
+                make_transfer_today, do_pick_team_today = True, True
             print('the decider results: ', make_transfer_today, do_pick_team_today, gw)
             if do_pick_team_today == False:
                 Accountant.log_gameweek_completion(self.folder, gw, [0, 'nothing_today'])
@@ -223,11 +231,15 @@ class FPL_AI():
 
                 '''Getting the sell-value of all players'''
                 human_inputs_players = safe_read_csv(self.folder + 'human_inputs_players.csv')
+                print('might need to do something with the backslashes??')
+                print(self.folder + 'human_inputs_players.csv')
+                print(human_inputs_players)
                 human_inputs_players.loc[:, 'current_value'] = human_inputs_players.apply(lambda row: \
                     price_df.loc[price_df['element']==row['player']]['value'].to_numpy()[0], axis=1)
                 human_inputs_players.loc[:, 'sell_value'] = human_inputs_players.apply(lambda row: \
                     (row['current_value'] if row['current_value'] < row['purchase_value'] else \
                     int(row[['current_value', 'purchase_value']].sum()) // 2), axis=1)
+                print(human_inputs_players)
                 squad = human_inputs_players[['player', 'sell_value']].to_numpy()
                 sell_value = human_inputs_players['sell_value'].sum()
                 
@@ -276,6 +288,7 @@ class FPL_AI():
                             gw_df, stitching_a_404 = Accountant.get_raw_gw_df(constants.STRING_SEASON, x)
                             if stitching_a_404:
                                 print(f'vastaav not uploaded gw{x} data yet')
+                            print('GW DF IS ', gw_df)
                             squadplayers = [x[0] for x in squad]
                             gw_points = gw_df.loc[gw_df['element'].isin(squadplayers)]['total_points'].sum()
                             print(gw_df.loc[gw_df['element'].isin(squadplayers)][['element','total_points']])
@@ -386,7 +399,7 @@ class FPL_AI():
                     full_transfer_market, constants.WILDCARD_2_GW_STARTS[self.season], self.bench_factor, chip_status,\
                     new_team_players['element'].to_list(), free_transfers, gw)
                 model, feature_names = Oracle.load_model(self.wildcard_model_path)
-                wildcard_pts = model.predict([[datapoint[x] for x in feature_names]])[0]
+                wildcard_pts = wildcard_prct = model.predict([[datapoint[x] for x in feature_names]])[0] #prct for recording
                 wildcard_players = [] # just a storeholder if we don't even compute
                 modern_wildcard_active = wildcard_pts >= self.chip_threshold_construction['wildcard'][0] and\
                     gw >= self.earliest_chip_weeks['wildcard'][0] and not(chip_status['wildcard'][0])
@@ -442,7 +455,9 @@ class FPL_AI():
                     print('WILDCARD !!!! BEING PLAYED !!!')
                 elif this_week_chip == 'freehit':
                     free_transfers = 0 # reset ft at 1
-                    starters, bench_order, captain, vice_captain = Brain.pick_team(freehit_players, health_df)[0]
+                    new_team_players = freehit_players
+                    starters, bench_order, captain, vice_captain = Brain.pick_team(new_team_players, health_df)[0]
+                    print('FREEHIT !!!! BEING PLAYED !!!')
                 necessary_meta = gw, name_df, new_team_players 
                 self.update_human_outputs(necessary_meta, starters, bench_order, captain, vice_captain, this_week_chip)
 
@@ -489,6 +504,8 @@ class FPL_AI():
 
             '''Step 14: Update Personal Tables'''        
             Accountant.update_delta_db(self.folder, choice_report)
+            if self.wildcard_method == 'modern':
+                wildcard_pts = wildcard_prct
             Accountant.update_chip_db(self.folder, gw, wildcard_pts, freehit_pts, captain_pts, bench_pts)
         
         # recording the exceptions to help me with asynchronous debugging

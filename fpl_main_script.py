@@ -1,4 +1,3 @@
-from private_versions.constants import DROPBOX_PATH, BACKUP_COMPUTER_WHO_RUNS_MAIN_SCRIPT, BACKUP_COMPUTER_OS_RUNS_MAIN_SCRIPT
 import pandas as pd
 from datetime import datetime
 from general_helpers import safe_read_csv
@@ -8,6 +7,7 @@ def main():
     
     # for automation purposes, only run once per day since our choice function includes this
     if sys.argv[-1] == 'automated':
+        from private_versions.constants import DROPBOX_PATH
         print('smooth')
         date = datetime.utcnow().strftime('%m %d %Y')
         print(date)
@@ -29,13 +29,18 @@ def main():
         else:
             new_row_df = pd.DataFrame([[date, 'yes']], columns=['date', 'success'])
             main_script_df = pd.concat([main_script_df, new_row_df], axis=0, ignore_index=True)
-            
+             
     # often running on a different computer
     else:
         print('hello backup computer')
-        from private_versions.malleable_constants import change_c_entry, change_computer_username
-        change_computer_username(BACKUP_COMPUTER_WHO_RUNS_MAIN_SCRIPT)
-        change_c_entry(BACKUP_COMPUTER_OS_RUNS_MAIN_SCRIPT)
+        print('still yet to figure out how to properly do this')
+        print('what we are aiming to do is allow the variable to be changed based on a sysargv arg')
+        print('but the variable we are importing in different files')
+        #import private_versions.malleable_constants 
+        #private_versions.malleable_constants.change_computer_username(private_versions.malleable_constants.BACKUP_COMPUTER_WHO_RUNS_MAIN_SCRIPT)
+        #private_versions.malleable_constants.change_c_entry(private_versions.malleable_constants.BACKUP_COMPUTER_OS_RUNS_MAIN_SCRIPT)
+        #print(private_versions.malleable_constants.C_ENTRY, private_versions.malleable_constants.COMPUTER_USERNAME)
+        
     
     # main chunk
     from Overseer import FPL_AI

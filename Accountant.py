@@ -15,7 +15,7 @@
 import time
 from datetime import datetime
 import importlib 
-from private_versions.constants import INT_SEASON_START, STRING_SEASON
+from private_versions.constants import INT_SEASON_START, STRING_SEASON, DONT_TRY_TO_PATCH_ODDS
 import Accountant_helpers 
 importlib.reload(Accountant_helpers)
 from Accountant_helpers import * #helper functions
@@ -184,36 +184,42 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
     '''Potential failures because of rescheduled gwks'''
     rescheduled_games = fixtures_df.loc[fixtures_df['gw']==39].shape[0] // 2
 
-    '''Replace any previous failures using backup database'''
-    # Might struggle if odds have been recorded earlier for things postponed, bcz 1 extra odds in there
-    # Might struggle with dgw odds?
-    print(fixtures_df['gw'].unique())
-    print(fixtures_df)
-    print(current_gw)
-    completed_games = fixtures_df.loc[fixtures_df['gw']<current_gw].shape[0] // 2
-    recorded_games =  final_odds.shape[0]
-    print('Games Played: ', completed_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
-    if completed_games + rescheduled_games > recorded_games: 
-        patch = True
-    if patch:
-        print('patching')
-        '''manual patching'''
-        relevant = ['Date', 'Team', 'AwayTeam', 'B365H', 'B365D', 'B365A']
-        database = pd.read_csv(BACKUP_ODDS, index_col=0)[relevant]
-        print('Backup odds incoming at: ', BACKUP_ODDS)
-        print(database)
-        final_odds = patch_odds(final_odds, database, fixtures_df, current_gw)  
+    if not DONT_TRY_TO_PATCH_ODDS:
+        '''Replace any previous failures using backup database'''
+        # Might struggle if odds have been recorded earlier for things postponed, bcz 1 extra odds in there
+        # Might struggle with dgw odds?
+        print(fixtures_df['gw'].unique())
+        print(fixtures_df)
+        print(current_gw)
+        completed_games = fixtures_df.loc[fixtures_df['gw']<current_gw].shape[0] // 2
+        recorded_games =  final_odds.shape[0]
+        print('Games Played: ', completed_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
+        if completed_games + rescheduled_games > recorded_games: 
+            patch = True
+        if patch:
+            print('patching')
+            '''manual patching'''
+            relevant = ['Date', 'HomeTeam', 'AwayTeam', 'B365H', 'B365D', 'B365A']
+            database_all = pd.read_csv(BACKUP_ODDS, index_col=0)
+            print(database_all)
+            database = database_all[relevant]
+            print('Backup odds incoming at: ', BACKUP_ODDS)
+            print(database)
+            final_odds = patch_odds(final_odds, database, fixtures_df, current_gw)  
 
 
-    '''Fill in anything missing, including this week, targetting just their specific game id'''
-    '''Currentally skipping because don't see much use in it and will just result in wasted api calls'''
-    #requested_games = fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2 
-    #recorded_games =  final_odds.shape[0]
-    #print('Requested games: ', requested_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
-    #if requested_games + rescheduled_games > final_odds.shape[0]: 
-    #    print('secondary patching')
-    #    clutch_odds = individual_game_odds(premier_league, final_odds, fixtures_df, current_gw) #from helpers
-    #    final_odds = pd.concat([final_odds, clutch_odds], axis=0, sort=True).reset_index(drop=True)
+        '''Fill in anything missing, including this week, targetting just their specific game id'''
+        '''Currentally skipping because don't see much use in it and will just result in wasted api calls'''
+        requested_games = fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2 
+        recorded_games =  final_odds.shape[0]
+        print('Requested games: ', requested_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
+        if requested_games + rescheduled_games > final_odds.shape[0]: 
+            print('secondary patching')
+            clutch_odds = individual_game_odds(premier_league, final_odds, fixtures_df, current_gw) #from helpers
+            final_odds = pd.concat([final_odds, clutch_odds], axis=0, sort=True).reset_index(drop=True)
+
+    '''Make the odds integers'''
+    final_odds = final_odds.astype({'oddsH':'float', 'oddsA': 'float', 'oddsD': 'float'})
 
     '''Save this data - as it is accurate'''
     final_odds.to_csv(ODDS_DB)
@@ -364,6 +370,7 @@ def update_team_previous(current_gw, fixtures_df, odds_df):
 
                 fixture_id = fix[0]
                 raw_odds = odds_df.loc[odds_df['fixture_id']==fixture_id].reset_index(drop=True)
+                print(raw_odds, 'is the raw odds')
                 if raw_odds.shape[0] == 0:
                     print('oh nooooo')
                     ''' alternative if just want to run and not worry about exception '''

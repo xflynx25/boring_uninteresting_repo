@@ -11,7 +11,9 @@ from Requests import proper_request
 import pandas as pd
 import aiohttp
 import asyncio
-from FPL_Remote.fpl import FPL
+from private_versions.constants import NO_CAPTCHA
+if NO_CAPTCHA:
+    from FPL_Remote.fpl import FPL
 import smtplib
 from email.mime.text import MIMEText
 
@@ -185,7 +187,7 @@ async def has_made_transfers_already(email, password, user_id):
         else:
             print('returning true')
             return True
-
+ 
 
 async def get_bench_and_starters(email, password, user_id):
     async with aiohttp.ClientSession() as session:

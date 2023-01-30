@@ -562,6 +562,7 @@ def resolve_concessions(total):
 
 #@if odds are 0 0 0 in this row, make the avg of all games they involved wit
 def correct_odds_if_necessary(row, odds_df, teams):
+    print(row, odds_df, teams)
     sum_odds = row[['oddsW', 'oddsD', 'oddsL']].sum()
     if sum_odds <= 0:
         if sum_odds < 0:
