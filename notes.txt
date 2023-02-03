@@ -34,3 +34,7 @@ The new method is working, although a few things need to be ironed out to maximi
 FEATURE: the user should need to read only a text file. It should paragraph itself and label by date like this, and should report things like:
     no transfer decided today
     transfer out ___ for ____, no chip, captain, vc = ___, ___, and bench order is ______, ______
+
+2/3/22
+------
+Overseer will only run once per day unless last 2 days in which case will continually do pick team, nice for debugging but we don't really want this behavior

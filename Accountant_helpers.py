@@ -129,8 +129,9 @@ def individual_game_odds(premier_league, final_odds, fixtures_df, current_gw, wh
     for date in unique_dates_this_week:
         week_fixtures = week_fixtures + [x[0] for x in get_fixture_ids(premier_league, date)]
     need_fixtures = set(week_fixtures).difference(final_odds['fixture_id'])
-    print('in individual game odds')
-    print(need_fixtures)
+    if VERBOSITY['odds_important']:
+        print('in individual game odds')
+        print(need_fixtures)
     clutch_odds = pd.DataFrame(get_bet365_odds_by_fixtures(need_fixtures))
     
     available_odds = []
@@ -229,7 +230,8 @@ def online_processed_player_season(raw_players, form_lengths, forward_pred_lengt
     nplayers = len(raw_players['element'].unique())
     print('number of players ', nplayers)
     for i, player in enumerate(raw_players['element'].unique()):
-        print('Player# ', i)
+        if VERBOSITY['playercounter']: 
+            print('Player# ', i)
         player_df = raw_players.loc[raw_players['element']==player]
         if player_df.shape[0] == 0: #sometimes very new players will not have any stats yet and will throw us errors. We don't have to consider them
             print('skipping them')
@@ -440,11 +442,11 @@ def api_to_patch_converter(api_names, patch_database):
 ### current_gw is integer
 # @return: final odds df (index=['fixture_id','oddsH', 'oddsD', 'oddsA'])
 def patch_odds(odds_df, database, fixtures_df, current_gw):
-    print('in patch odds')
+    if VERBOSITY['Accountant_Main_Loop_Function_Notifiers']: 
+        print('in patch odds')
     '''go from fixture id to hometeam, awayteam, date'''
     SEASON = INT_SEASON_START
     season = STRING_SEASON
-    print(season, SEASON)
     premier_league = get_premier_league_id(SEASON) 
     vastaav_converter = id_to_teamname_converter(season)# db id --> namestring
     api_converter = api_id_to_teamname_converter(premier_league) #teamname_to_id_converter(season) # api id --> namestring
@@ -459,19 +461,22 @@ def patch_odds(odds_df, database, fixtures_df, current_gw):
     kickoff_dates = kickoff_times.apply(lambda x: x[:10]).unique()
     for kickoff_time in kickoff_dates:
         date = kickoff_time[:10]
-        print('date is ', date)
+        if VERBOSITY[ 'odds']: 
+            print('date is ', date)
         for fix in list(get_fixture_ids(premier_league, date)): #otherwise start getting async stuff
             fixture_id = fix[0]
             homeName = api_converter[fix[1]]
             awayName = api_converter[fix[2]]
             if fixture_id not in odds_df['fixture_id'].to_list(): #haven't got already
-                print('bad fix id is ', fixture_id)
+                if VERBOSITY['odds']: 
+                    print('bad fix id is ', fixture_id)
 
                 # get game which matches the fixture id
                 home = patch_converter[homeName]
                 away = patch_converter[awayName]
                 target_match = database.loc[(database['HomeTeam']==home) & (database['AwayTeam']==away)].reset_index(drop=True)
-                print('home/away/match is ', home, away, target_match.shape)
+                if VERBOSITY['odds_important']: 
+                    print('date is ', date, ' and ','home/away/match is ', home, away, target_match.shape)
 
                 # if there is no matching value check if it is a rescheduled game using fixtures df
                 # if not... raise exception because then there is a match we are missing
@@ -483,7 +488,8 @@ def patch_odds(odds_df, database, fixtures_df, current_gw):
                     match = fixtures_df.loc[(fixtures_df['team']==home)&(fixtures_df['was_home']==1)&(fixtures_df['opponent']==away)]
                     earliest_possible = max(kickoff_dates)
                     if match['kickoff_time'].iloc[0] < earliest_possible: #otherwise its a rescheduled game
-                        print("No backup data for this match: WILL BE AUTOCORRECTED HOPEFULLY EEEK" + str(fixture_id))
+                        if VERBOSITY['odds_important']: 
+                            print('No backup data for this match: WILL BE AUTOCORRECTED HOPEFULLY EEEK' + str(fixture_id))
                         continue
                         #raise Exception("No backup data for this match: " + str(fixture_id))
                     else:
@@ -496,8 +502,9 @@ def patch_odds(odds_df, database, fixtures_df, current_gw):
                 new_rows.append( [fixture_id, oddsH, oddsD, oddsA] )
                 
     patched_odds = pd.DataFrame(new_rows, columns=['fixture_id','oddsH', 'oddsD', 'oddsA'])
-    print('patched odds for this week\n\n')
-    print(patched_odds)
+    print("'patched odds for this week\n\n'", 'Accountant_Main_Loop_Function_Notifiers')
+    if VERBOSITY['odds']: 
+        print(patched_odds)
     final_odds = pd.concat([patched_odds, odds_df], axis=0, ignore_index=True, sort=True)
     return final_odds
 
@@ -562,14 +569,16 @@ def resolve_concessions(total):
 
 #@if odds are 0 0 0 in this row, make the avg of all games they involved wit
 def correct_odds_if_necessary(row, odds_df, teams):
-    print(row, odds_df, teams)
+    if VERBOSITY['odds']: 
+        print(row, odds_df, teams)
     sum_odds = row[['oddsW', 'oddsD', 'oddsL']].sum()
     if sum_odds <= 0:
         if sum_odds < 0:
             raise Exception("sum of odds is less than 0")
         else:
             team = row['team']
-            print('error checking', row['team'])
+            if VERBOSITY['odds_important']: 
+                print('error checking', row['team'])
 
             wins, draws, losses = teams.loc[teams['team']==team][['oddsW', 'oddsD', 'oddsL']].mean(axis=0).to_numpy()
                 

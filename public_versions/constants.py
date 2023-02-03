@@ -1,5 +1,4 @@
 # page containing necessary constants for import across different files
-from pickle import FALSE
 from malleable_constants import COMPUTER_USERNAME, C_ENTRY
 
 CENTURY = 20
@@ -87,3 +86,37 @@ def change_global_last_gameweek(gw):
 def change_wildcard_depth(depth):
     global WILDCARD_DEPTH_PARAM
     WILDCARD_DEPTH_PARAM = depth
+
+# last date of the wildcard
+MANUAL_WILDCARD_DATES = (17, 38)
+
+
+
+''' Manual Execution Control '''
+NUM_PLAYERS_ON_SCOREBOARD = 50
+
+# big dict that can be referenced for print statements
+VERBOSITY = {
+    'misc': True,
+    'odds_matches': False,
+    'Accountant_Main_Loop_Function_Notifiers': True, 
+    'Previous_Points_Calculation_Info': False, 
+    'squad': True,
+    'odds': False,
+    'odds_important': True,
+    'playercounter': False,
+    'brain': False,
+    'brain_important': True, 
+}
+SCOREBOARD_VERBOSITY = 0.1
+
+def truthprint(wrappedstr, casestring):
+    if VERBOSITY[casestring]:
+        print(eval(wrappedstr))
+
+FORCE_MODERN_WILDCARD = False
+DONT_TRY_TO_PATCH_ODDS = False
+
+FORCE_MOVE_TODAY = False
+TRANSFER_MARKET_VISUALIZATION_ROUNDING = 3
+SCOREBOARD_PRINT_VERSION = 'new'

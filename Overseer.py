@@ -4,8 +4,6 @@ from private_versions.Personalities import Athena_v10a, Athena_v10p
 from Accountant import already_made_moves
 
 import private_versions.constants as constants
-#import Accountant
-print(constants.DROPBOX_PATH)
 import Oracle 
 import Brain 
 import Agent 
@@ -96,10 +94,10 @@ class FPL_AI():
                     return 0
                 else:
                     return -1
-        print('in should we make transefer')
-        print(f'decision args: {decision_args}')
         gw, already_transfered, fix_df = decision_args
-        print('gw is ', gw)
+        if constants.VERBOSITY['misc']:
+            print('in should we make transefer')
+            print('gw is ', gw)
         
         '''decision'''
         # NEED TO ALSO MAKE SURE THAT IT IS GRABBING THE CORRECT NEXT GAMEWEEK.
@@ -109,8 +107,8 @@ class FPL_AI():
             days_left = get_deadline_difference(gw+1)
             print('thinks its the wrong gw, only moving if next wk starts tmrw')
             return (True, True, gw+1) if days_left==1 else (False, False, gw+1)
-        
-        print('days left are: ', days_left)
+        if constants.VERBOSITY['misc']:
+            print('days left are: ', days_left)
             
         # IF ALREADY TRANSFERRED, JUST DECIDING WHETHER TO RECOMPUTE PICK_TEAM
         if already_transfered:
@@ -159,22 +157,51 @@ class FPL_AI():
         return to_move, to_move, gw
 
 
-    # chip stuff is done before imputting to this function, this is just the readout for what your team should look like this week
+    # This is the file the user interacts with. It tells them what to input into their app, but also gives them the projected scores
+    # gw, '' / pts_1 / pts_full , 15 players , c, vc, chip
     def update_human_outputs(self, necessary_meta, starters, bench_order, captain, vice_captain, this_week_chip):
+        # Get the three rows for the current week
+        ## meta
         gw, name_df, new_team_players = necessary_meta
-        print('new_team_players', new_team_players)
-        print('starters and bench = ', starters, bench_order)
-        cols = ['gw'] + [f'name_{x}' for x in range(1, 16)] + [f'player_{x}' for x in range(1, 16)] + ['captain', 'vc', 'chip']
-        players = list(starters) + list(bench_order)
-        players += list(set(new_team_players['element'].to_numpy()).difference(set(players)))
-        print('players', players, len(players))
-        print('starters', starters, len(starters))
-        print('bench_order', bench_order, len(bench_order))
-        names = [name_df.loc[name_df['element']==player]['name'].tolist()[0] for player in players]
-        print('NAMES = ', names)
-        biglist = [gw] + names + players + [captain, vice_captain, this_week_chip]
-        human_outputs_players = pd.DataFrame([biglist], columns = cols)
-        safe_to_csv(human_outputs_players, self.folder + 'human_outputs.csv')
+        cols = ['gw', 'title'] + [f'name_{x}' for x in range(1, 16)] + ['captain', 'vc', 'chip']
+        ## first row = player names
+        players = list(starters) + list(bench_order) # starters first
+        players += list(set(new_team_players['element'].to_numpy()).difference(set(players))) # keeper last
+        players += [captain, vice_captain] # add the captaincy
+        names = [name_df.loc[name_df['element']==player]['name'].tolist()[0] for player in players] # turn into names
+        biglist = [gw, ''] + names + [this_week_chip] 
+        human_outputs = pd.DataFrame([biglist], columns = cols)
+        print('NAMES = ', names[:-2])
+        print('Captain & VC = ', names[-2:])
+
+        ## second row = pts_1
+        points_one = [np.round(new_team_players.loc[new_team_players['element']==player, 'expected_pts_N1'].to_numpy()[0], 2) for player in players[:-2]]
+        rowone = [gw, 'pts_1'] + points_one + ['', '', '']
+        print('rowone', rowone)
+        human_outputs.loc[1, :] = rowone
+        
+
+        ## third row = pts_6
+        #points_full = [np.round(new_team_players.loc[new_team_players['element']==player]['expected_pts_full'], 2) for player in players[:-2]]
+        #owfull = [gw, 'pts_full'] + points_full + ['', '', '']
+        points_full = [np.round(new_team_players.loc[new_team_players['element']==player,'expected_pts_full'].to_numpy()[0] / 6, 2) for player in players[:-2]]
+        rowfull = [gw, 'ppg_6'] + points_full + ['', '', '']
+        print('rowfull', rowfull)
+        human_outputs.loc[2, :] = rowfull
+
+        # Read existing and remove currently listed gw if already there
+        df = safe_read_csv(self.folder + 'human_outputs.csv')
+        print(df)
+        try:
+            df = df.loc[df['gw']!=gw, :]
+            print(df)
+            df = pd.concat([df, human_outputs], axis=0).reset_index(drop=True)
+        except: #fails if it is new and no 'gw'
+            df = human_outputs
+        print(df)
+
+        # append rows to document
+        safe_to_csv(df, self.folder + 'human_outputs.csv')
 
     ### SUMMARY THROUGH SUBSECTIONS ### 
     '''obtaining metadata'''
@@ -218,7 +245,8 @@ class FPL_AI():
             make_transfer_today, do_pick_team_today, gw = self.should_we_make_transfer_today(decision_args)
             if constants.FORCE_MOVE_TODAY:
                 make_transfer_today, do_pick_team_today = True, True
-            print('the decider results: ', make_transfer_today, do_pick_team_today, gw)
+            if constants.VERBOSITY['misc']:
+                print('the decider results: ', make_transfer_today, do_pick_team_today, gw)
             if do_pick_team_today == False:
                 Accountant.log_gameweek_completion(self.folder, gw, [0, 'nothing_today'])
                 return
@@ -231,15 +259,11 @@ class FPL_AI():
 
                 '''Getting the sell-value of all players'''
                 human_inputs_players = safe_read_csv(self.folder + 'human_inputs_players.csv')
-                print('might need to do something with the backslashes??')
-                print(self.folder + 'human_inputs_players.csv')
-                print(human_inputs_players)
                 human_inputs_players.loc[:, 'current_value'] = human_inputs_players.apply(lambda row: \
                     price_df.loc[price_df['element']==row['player']]['value'].to_numpy()[0], axis=1)
                 human_inputs_players.loc[:, 'sell_value'] = human_inputs_players.apply(lambda row: \
                     (row['current_value'] if row['current_value'] < row['purchase_value'] else \
                     int(row[['current_value', 'purchase_value']].sum()) // 2), axis=1)
-                print(human_inputs_players)
                 squad = human_inputs_players[['player', 'sell_value']].to_numpy()
                 sell_value = human_inputs_players['sell_value'].sum()
                 
@@ -281,17 +305,21 @@ class FPL_AI():
                 weekly_point_returns = {}
                 for x in range(1, gw):
                     gw_points = human_inputs_meta.loc[0, f'points_gw_{x}']
-                    print(f'gw {x} is {gw_points}')
+                    if constants.VERBOSITY['Previous_Points_Calculation_Info']:
+                        print(f'gw {x} is {gw_points}')
                     if generic_nan_comparison(gw_points):
                         if x == gw - 1:
-                            print('in the adjustment')
+                            if constants.VERBOSITY['Previous_Points_Calculation_Info']:
+                                print('in the adjustment')
                             gw_df, stitching_a_404 = Accountant.get_raw_gw_df(constants.STRING_SEASON, x)
                             if stitching_a_404:
                                 print(f'vastaav not uploaded gw{x} data yet')
-                            print('GW DF IS ', gw_df)
+                            if constants.VERBOSITY['Previous_Points_Calculation_Info']:
+                                print('GW DF IS ', gw_df)
                             squadplayers = [x[0] for x in squad]
                             gw_points = gw_df.loc[gw_df['element'].isin(squadplayers)]['total_points'].sum()
-                            print(gw_df.loc[gw_df['element'].isin(squadplayers)][['element','total_points']])
+                            if constants.VERBOSITY['Previous_Points_Calculation_Info']:
+                                print(gw_df.loc[gw_df['element'].isin(squadplayers)][['element','total_points']])
                             # updating the inputs file
                             human_inputs_meta.loc[0, f'points_gw_{x}'] = gw_points
                             human_inputs_meta.to_csv(self.folder + 'human_inputs_meta.csv')
@@ -302,17 +330,15 @@ class FPL_AI():
                 # BECAUSE WE NEED TO GET CAPTAIN INFO, & BENCH SUBS, SO NEED MAYBE AN EVALUATOR 
                 # FUNC ... BUT WE CAN STILL WORK BY MANUALLY INPUTTING FOR NOW . 
     
-            print(chip_status)
-            print(squad)
-            print(gw, squad, sell_value, free_transfers, chip_status, weekly_point_returns)
+            if constants.VERBOSITY['squad']:
+                print(gw, squad, sell_value, free_transfers, chip_status, weekly_point_returns)
             
-
             '''Step 5: Grabbing the data for the current week, computing statistics'''
             explored_already_today = Accountant.check_if_explored_today()
-            print('Has explored already today? ', explored_already_today)
+            if constants.VERBOSITY['misc']:
+                print('Has explored already today? ', explored_already_today)
             current_gw_stats = safe_read_csv(constants.DROPBOX_PATH + "current_stats.csv") #speedup if multiple personalities
             if not(explored_already_today) or current_gw_stats.loc[current_gw_stats['gw']==gw].shape[0] == 0: # only run once per day
-                print('got to currentweekfullstats')
                 current_gw_stats = Accountant.current_week_full_stats(self.season, {1,2,3,6}, {1,3,6}, ignore_gwks=IGNORE_GWKS)
                 current_gw_stats.to_csv(constants.DROPBOX_PATH + "current_stats.csv") 
                 pd.DataFrame().to_csv(constants.TRANSFER_MARKET_SAVED) #reset transfer market every time update gw_stats
@@ -345,26 +371,26 @@ class FPL_AI():
             Accountant.update_explored_today()
             ### VISUALIZING
             print('first sorted by next match')
-            Oracle.visualize_top_transfer_market(full_transfer_market, name_df, 'expected_pts_N1', 35, healthy=health_df, allowed_healths=['a','d']) 
-            Oracle.visualize_top_transfer_market(full_transfer_market, name_df, 'expected_pts_full', 35, healthy=health_df, allowed_healths=['a','d'])
+            Oracle.visualize_top_transfer_market(full_transfer_market, name_df, 'expected_pts_N1', constants.NUM_PLAYERS_ON_SCOREBOARD, healthy=health_df, allowed_healths=['a','d']) 
+            Oracle.visualize_top_transfer_market(full_transfer_market, name_df, 'expected_pts_full', constants.NUM_PLAYERS_ON_SCOREBOARD, healthy=health_df, allowed_healths=['a','d'])
             
 
             '''Step 8: If only doing PICK TEAM today early end'''
             if not make_transfer_today and do_pick_team_today:
                 if constants.NO_CAPTCHA:
-                        starters, bench_order, captain, vice_captain = Brain.pick_team(team_players, health_df)[0]
-                        print('OUR INFO FOR VERIFYING !! \n\n\n starters = ', starters, 'bench order', bench_order, 'captain and vice ', captain, vice_captain, 'OUR INFO FOR VERIFYING !! \n\n\n')
-                        start, on_bench = asyncio.run(Agent.get_bench_and_starters(self.email, self.password, self.team_id))
-                        sub_in, sub_out = Brain.figure_out_substitution(start, on_bench, starters, set(bench_order))
-                        asyncio.run(Agent.select_team(self.email, self.password, self.team_id, sub_in, sub_out, captain, vice_captain, bench_order))
-                        Accountant.log_gameweek_completion(self.folder, gw, [0, 'pick_team_only'])
-                        return 
+                    starters, bench_order, captain, vice_captain = Brain.pick_team(team_players, health_df)[0]
+                    print('OUR INFO FOR VERIFYING !! \n\n\n starters = ', starters, 'bench order', bench_order, 'captain and vice ', captain, vice_captain, 'OUR INFO FOR VERIFYING !! \n\n\n')
+                    start, on_bench = asyncio.run(Agent.get_bench_and_starters(self.email, self.password, self.team_id))
+                    sub_in, sub_out = Brain.figure_out_substitution(start, on_bench, starters, set(bench_order))
+                    asyncio.run(Agent.select_team(self.email, self.password, self.team_id, sub_in, sub_out, captain, vice_captain, bench_order))
+                    Accountant.log_gameweek_completion(self.folder, gw, [0, 'pick_team_only']) 
                 else:
                     starters, bench_order, captain, vice_captain = Brain.pick_team(team_players, health_df)[0]
                     print('OUR INFO FOR VERIFYING !! \n\n\n starters = ', starters, 'bench order', bench_order, 'captain and vice ', captain, vice_captain, 'OUR INFO FOR VERIFYING !! \n\n\n')   
                     necessary_meta = gw, name_df, team_players 
                     self.update_human_outputs(necessary_meta, starters, bench_order, captain, vice_captain, 'normal')
                     Accountant.log_gameweek_completion(self.folder, gw, [0, 'pick_team_only'])
+                return 
 
 
             '''Step 9: Normal Transfer Selection'''
@@ -378,10 +404,9 @@ class FPL_AI():
             '''Step 10: Act as if doing normal transfers and get triple_captain/bench boost information'''
             new_team_players = Oracle.change_team_players(full_transfer_market, team_players, chosen_transfer)
             squad_selection, captain_pts, bench_pts = Brain.pick_team(new_team_players, health_df)
-            print('squad selection is ', squad_selection)
             starters, bench_order, captain, vice_captain = squad_selection
             print(squad_selection, bench_order, captain_pts, bench_pts, chosen_transfer, choice_report, 'this was a ton of information from the transfer')
-            print('OUR INFO FOR VERIFYING !! \n\n\n starters = ', starters, 'bench order', bench_order, 'captain and vice ', captain, vice_captain, 'OUR INFO FOR VERIFYING !! \n\n\n')
+            print('OUR INFO FOR VERIFYING !! \n\n\n starters = ', starters, 'bench order', bench_order, 'captain and vice ', captain, vice_captain, 'OUR INFO FOR VERIFYING !! \n\n')
             print_transfer(name_df, chosen_transfer)
 
 
@@ -446,6 +471,12 @@ class FPL_AI():
                         send_email, send_password = [(self.email, self.password) if no_input_gmail else (constants.NOTIFICATION_SENDER_GMAIL,constants.NOTIFICATION_SENDER_PASSWORD)][0]
                         Agent.notify_human(self.email, send_email, send_password, constants.NOTIFICATION_RECEIVER_EMAIL, gw, this_week_chip)
             else:
+                '''Logging'''
+                # (either way we organize this and the rest of the logging, there could be problems if we crash in between - this way is less catastrophic, we will just not move this week if the case'''
+                action = len(safer_eval(chosen_transfer['inbound'])) #num transfers for nochip
+                transfer_info = [action, this_week_chip]
+                Accountant.log_gameweek_completion(self.folder, gw, transfer_info)    
+
                 '''update human_outputs.csv'''
                 # first adjust if chip
                 if this_week_chip == 'wildcard':
@@ -460,12 +491,7 @@ class FPL_AI():
                     print('FREEHIT !!!! BEING PLAYED !!!')
                 necessary_meta = gw, name_df, new_team_players 
                 self.update_human_outputs(necessary_meta, starters, bench_order, captain, vice_captain, this_week_chip)
-
-                '''Logging'''
-                action = len(safer_eval(chosen_transfer['inbound'])) #num transfers for nochip
-                transfer_info = [action, this_week_chip]
-                Accountant.log_gameweek_completion(self.folder, gw, transfer_info)                
-                
+            
                 '''update the human_inputs_players.csv, and human_inputs_meta.csv, accordingly ''' 
                 # deal with the chips
                 if this_week_chip == 'wildcard':

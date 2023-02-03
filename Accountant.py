@@ -19,7 +19,6 @@ from private_versions.constants import INT_SEASON_START, STRING_SEASON, DONT_TRY
 import Accountant_helpers 
 importlib.reload(Accountant_helpers)
 from Accountant_helpers import * #helper functions
-from private_versions.constants import VERBOSITY 
 
 PLAYER_DB = DROPBOX_PATH + r'player_raw.csv'
 TEAM_DB = DROPBOX_PATH + r'team_raw.csv'
@@ -178,9 +177,10 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
     else: 
         final_odds =  safe_read_csv(ODDS_DB)
 
-    print('the matches and then the odds')
-    print(week_odds)
-    print(final_odds)
+    if VERBOSITY['odds']:
+        print('the matches and then the odds')
+        print(week_odds)
+        print(final_odds)
     '''Potential failures because of rescheduled gwks'''
     rescheduled_games = fixtures_df.loc[fixtures_df['gw']==39].shape[0] // 2
 
@@ -188,23 +188,27 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
         '''Replace any previous failures using backup database'''
         # Might struggle if odds have been recorded earlier for things postponed, bcz 1 extra odds in there
         # Might struggle with dgw odds?
-        print(fixtures_df['gw'].unique())
-        print(fixtures_df)
-        print(current_gw)
+        
+        if VERBOSITY['odds']:
+            print(fixtures_df['gw'].unique())
+            print(fixtures_df)
+            print(current_gw)
         completed_games = fixtures_df.loc[fixtures_df['gw']<current_gw].shape[0] // 2
         recorded_games =  final_odds.shape[0]
-        print('Games Played: ', completed_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
+        if VERBOSITY['odds_important']:
+            print('Games Played: ', completed_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
         if completed_games + rescheduled_games > recorded_games: 
             patch = True
         if patch:
-            print('patching')
             '''manual patching'''
             relevant = ['Date', 'HomeTeam', 'AwayTeam', 'B365H', 'B365D', 'B365A']
             database_all = pd.read_csv(BACKUP_ODDS, index_col=0)
-            print(database_all)
             database = database_all[relevant]
-            print('Backup odds incoming at: ', BACKUP_ODDS)
-            print(database)
+            if VERBOSITY['odds']:
+                print('patching')
+                print(database_all)
+                print('Backup odds incoming at: ', BACKUP_ODDS)
+                print(database)
             final_odds = patch_odds(final_odds, database, fixtures_df, current_gw)  
 
 
@@ -212,9 +216,11 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
         '''Currentally skipping because don't see much use in it and will just result in wasted api calls'''
         requested_games = fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2 
         recorded_games =  final_odds.shape[0]
-        print('Requested games: ', requested_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
+        if VERBOSITY['odds_important']:
+            print('Requested games: ', requested_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
         if requested_games + rescheduled_games > final_odds.shape[0]: 
-            print('secondary patching')
+            if VERBOSITY['odds_important']:
+                print('secondary patching')
             clutch_odds = individual_game_odds(premier_league, final_odds, fixtures_df, current_gw) #from helpers
             final_odds = pd.concat([final_odds, clutch_odds], axis=0, sort=True).reset_index(drop=True)
 
@@ -228,7 +234,8 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
     '''Fill in anything missing, including this week, with an estimate of their previous'''
     requested_games = fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2 
     recorded_games =  final_odds.shape[0]
-    print('Requested games: ', requested_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
+    if VERBOSITY['odds_important']:
+        print('Requested games: ', requested_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
     if requested_games + rescheduled_games > final_odds.shape[0]: # or True if you know you need to patch things this week, don't know why this check would fail though
         print('forceful odds filling')
         print('IMPLEMENT')

@@ -4,7 +4,7 @@ import math
 from RandomForest import randomForestRegression
 import pickle
 from general_helpers import drop_columns_containing, get_columns_containing
-from private_versions.constants import MAX_FORWARD_CREATED
+from private_versions.constants import MAX_FORWARD_CREATED, TRANSFER_MARKET_VISUALIZATION_ROUNDING
 import joblib
 
 # players that play less than this many minutes in the whole season will be dropped
@@ -34,8 +34,8 @@ def visualize_top_transfer_market(full_transfer_market, name_df, sort_key, n, he
     for _,row in sorted_market.iterrows():
         name = name_df.loc[name_df['element']==row['element']]['name'].tolist()[0]
         name_length = len(name)
-        next_pts = round(row['expected_pts_N1'], 5)
-        full_pts = round(row['expected_pts_full'], 5)
+        next_pts = round(row['expected_pts_N1'], TRANSFER_MARKET_VISUALIZATION_ROUNDING)
+        full_pts = round(row['expected_pts_full'], TRANSFER_MARKET_VISUALIZATION_ROUNDING)
         buffer1 = [max(15-name_length, 1) if full_pts >= 10 else max(16-name_length, 1)][0]
         buffer2 = 8
         print(name, ' '*buffer1, next_pts, ' '*buffer2, full_pts) 

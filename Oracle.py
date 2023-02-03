@@ -23,11 +23,13 @@ from general_helpers import get_columns_containing, safe_make_folder, safer_eval
 import pandas as pd
 import time
 import math
-from private_versions.constants import DROPBOX_PATH, UPDATED_TRAINING_DB, TRANSFER_MARKET_SAVED,  MAX_FORWARD_CREATED
+from private_versions.constants import DROPBOX_PATH, UPDATED_TRAINING_DB, TRANSFER_MARKET_SAVED,  MAX_FORWARD_CREATED, NUM_PLAYERS_ON_SCOREBOARD,\
+    VERBOSITY, SCOREBOARD_VERBOSITY, SCOREBOARD_PRINT_VERSION
 from Oracle_helpers import save_model, load_model, drop_back_and_forward_features, train_rf_with_threshold,\
     drop_nan_rows, get_backward, long_term_benchwarmer, get_sets_from_name, blank_row, is_useful_model,\
     keeper_outfield_split, eliminate_players, nerf_players, save_market, visualize_top_transfer_market
 from os import chdir, listdir
+import random
 
 
 """
@@ -196,7 +198,6 @@ def make_team_players(full_transfer_market, squad):
 #@params: 15,6 team players df, transfers= df with('set(inb)', 'set(outb)', delta), will just be empty if save_ft
 #@return: 15,6 df but with some swaps based on transfers
 def change_team_players(full_transfer_market, team_players, transfers):
-    print('Trnasfers in oracle: \n', transfers)
     inbound = safer_eval(transfers['inbound'])
     outbound = safer_eval(transfers['outbound'])
     new_boys = full_transfer_market.loc[full_transfer_market['element'].isin(inbound)]
@@ -234,24 +235,33 @@ def avg_transfer_markets(transfer_markets, name_df=None, visualize=False, save=F
         for df, suitename in zip(transfer_markets + [final], suite_names + ['final']):
             print(f"\n\nNew Transfer Market Type is {suitename}")
             for score_type in ('expected_pts_N1', 'expected_pts_full'):
-                print("\nSorted by ", score_type, "\nName   N1     N6")
-                top_perf = df.sort_values(score_type, ascending=False)[:25]
-                for _, player in top_perf.iterrows():
-                    element, n1, full = player[['element', 'expected_pts_N1', 'expected_pts_full']].to_list()
-                    name = name_df.loc[name_df['element']==element]['name'].tolist()[0]
+                print("\nSorted by ", score_type)  
+                if suitename == 'final' or SCOREBOARD_VERBOSITY <= random.random():
+                    continue
 
-                    """begoviC wasn't printing"""
-                    try:
-                        print(name, "  ", n1, "  ", full)
-                    except:
-                        printable_name = ""
-                        for letter in name:
-                            try:
-                                print(letter)
-                                printable_name += letter
-                            except:
-                                printable_name += '_'
-                        print(printable_name, "  ", n1, "  ", full)
+                '''OLD'''
+                if SCOREBOARD_PRINT_VERSION == 'old':
+                    print("\nName   N1     N6")
+                    top_perf = df.sort_values(score_type, ascending=False)[:NUM_PLAYERS_ON_SCOREBOARD]
+                    for _, player in top_perf.iterrows():
+                        element, n1, full = player[['element', 'expected_pts_N1', 'expected_pts_full']].to_list()
+                        name = name_df.loc[name_df['element']==element]['name'].tolist()[0]
+
+                        """begoviC wasn't printing"""
+                        try:
+                            print(name, "  ", n1, "  ", full)
+                        except:
+                            printable_name = ""
+                            for letter in name:
+                                try:
+                                    print(letter)
+                                    printable_name += letter
+                                except:
+                                    printable_name += '_'
+                            print(printable_name, "  ", n1, "  ", full)
+                if SCOREBOARD_PRINT_VERSION == 'new':
+                    visualize_top_transfer_market(df, name_df, score_type, NUM_PLAYERS_ON_SCOREBOARD)
+            
                 
     return final
 
@@ -409,7 +419,7 @@ def create_wildcard_datapoint(current_gw_df, fix_df, bench, points_each_week, gw
     datapoint['gw'], datapoint['wks_till_expire'] = gw, (wildcard_end-gw if wildcard_end > gw else 38 - gw)
     datapoint['pts_season'], datapoint['pts_last_1'], datapoint['pts_last_3'], datapoint['pts_last_6'] =\
         [sum(past_pts[-x:]) for x in (len(past_pts), 1, 3, 6)]
-    print(gw, fix_df)
+        
     datapoint['week_interval'] = fix_df.loc[fix_df['gw']==gw]['day'].to_list()[0] - max(fix_df.loc[fix_df['gw']<gw]['day'].to_list())
     for i in (1,3,6):
         double_teams = {team: sum([fix_df.loc[(fix_df['gw']==some_gw) & (fix_df['team']==team)].shape[0] > 1 for some_gw in list(range(gw, gw+i))])  for team in fix_df['team'].unique()}

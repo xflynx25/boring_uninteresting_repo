@@ -11,7 +11,7 @@ import Requests
 importlib.reload(Requests)
 from Requests import * #helper functions
 from private_versions.constants import LAST_GAMEWEEK, VASTAAV_ROOT, DATAHUB, CORE_STATS, NEW_STATS, BOOLEAN_STATS,\
-    MANUAL_VASTAAV_ROOT, DROPBOX_PATH, MANUALLY_REDO_WEEKS, VASTAAV_NO_RESPONSE_WEEKS
+    MANUAL_VASTAAV_ROOT, DROPBOX_PATH, MANUALLY_REDO_WEEKS, VASTAAV_NO_RESPONSE_WEEKS, VERBOSITY
 from private_versions.constants import accountant_core as CORE_META 
 from private_versions.constants import accountant_team as TEAM_META
 from collections import Counter

@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np 
 from itertools import combinations
 from collections import Counter
-from private_versions.constants import DROPBOX_PATH
+from private_versions.constants import DROPBOX_PATH, VERBOSITY
 import time
 import random
 from general_helpers import get_columns_containing, safer_eval
@@ -45,17 +45,16 @@ def find_healthy_best_captains(starter_df, health_df):
 
 # prints the choices it was thinking of doing the screen
 def transfer_option_names(scoreboard, name_df, num_transfers=0):
-    print('here in transfer_option_names')
     print(scoreboard)
     for index, row in scoreboard.iterrows():
-        print('Option Number ', index + 1)
         players_in = []
         players_out = []
         for player_in in safer_eval(row['inbound']):
             players_in.append(name_df.loc[name_df['element']==player_in]['name'].tolist()[0])
         for player_out in safer_eval(row['outbound']):
             players_out.append(name_df.loc[name_df['element']==player_out]['name'].tolist()[0])
-        print('players in= ', players_in, 'players out= ', players_out)
+        if VERBOSITY['brain_important']: 
+            print('Option Number ', index + 1, ' ~~~ ', 'players in= ', players_in, 'players out= ', players_out)
 
 # renames a column for reuse of other functions
 def rename_expected_pts(df):

@@ -17,7 +17,7 @@ from Brain_helpers import kill_irrelevants_and_sort, check_feasibility_and_get_d
     get_points, get_starters_and_bench, find_healthy_best_captains, transfer_option_names, rename_expected_pts,\
     filter_transfering_healthy_players, get_bench_order, get_bench_order_with_keeper, randomly_shuffle_n_players,\
     search_v2, safer_eval
-from private_versions.constants import WILDCARD_DEPTH_PARAM
+from private_versions.constants import WILDCARD_DEPTH_PARAM, VERBOSITY
 import time
 
 
@@ -48,7 +48,8 @@ def top_transfer_options(transfer_market, team_players, sell_value, num_transfer
     #####start = time.time()
     scoreboard = search_v2(transfer_market, team_players, sell_value, num_transfers,\
         num_options, bench_factor, protected_players)
-    print(set(scoreboard['delta'].to_numpy()))
+    if VERBOSITY['brain']: 
+        print(set(scoreboard['delta'].to_numpy()))
     #####print("New Search: ", round(time.time()-start, 8))
     #print(scoreboard)
     return scoreboard
@@ -112,7 +113,8 @@ def choose_top_transfer_n(scoreboard, full_transfer_market, team_players, sell_v
     if len(value_vector) > 3: #means we want to get rid of our injured players
         scoreboard = filter_transfering_healthy_players(scoreboard, team_players, value_vector[3])
     FULL_SCOREBOARD = scoreboard.apply(lambda x: add_N1_and_worth_columns(x, full_transfer_market, team_players),axis=1, result_type='expand')
-    print('full scoreboard: \n', FULL_SCOREBOARD)
+    if VERBOSITY['brain']: 
+        print('full scoreboard: \n', FULL_SCOREBOARD)
     FULL_SCOREBOARD = FULL_SCOREBOARD.loc[FULL_SCOREBOARD['delta_N1'] >= min_delta] #drop those that we would reject on low N1
     if FULL_SCOREBOARD.shape[0] == 0: #already perfect team
         print('already perfect team considering Next1')
@@ -212,10 +214,12 @@ def weekly_transfer(full_transfer_market, team_players, sell_value, free_transfe
             n = len(safer_eval(choice['outbound']))
             score = choice['delta']
             delta_N1score = choice['delta_N1']
-            print(f'{n}: {score} vs {delta_N1score}')
+            if VERBOSITY['brain']: 
+                print(f'{n}: {score} vs {delta_N1score}')
             buckets[n] = tickets(n, score, delta_N1score, free_transfers, hesitancy_dict, quality_factor, season_avg_delta_dict[n], min_delta_dict)
 
-        print('buckets are ', buckets)
+        if VERBOSITY['brain']: 
+            print('buckets are ', buckets)
         total = sum(buckets.values())
         if total==0: #very rare case where all transfers bad and 2 ft
             return 0
@@ -356,8 +360,9 @@ def play_chips_or_no(gw, chip_status, chip_threshold_dict, wildcard_pts, freehit
         'bench_boost': bench_pts,
         'triple_captain': captain_pts
     }
-    print('this week chip scores: ', this_week_chip_scores, '\n chip thresholds: ', chip_threshold_dict)
-    print(earliest_chip_weeks)
+    if VERBOSITY['brain_important']: 
+        print('this week chip scores: ', this_week_chip_scores, '\n chip thresholds: ', chip_threshold_dict)
+        print(earliest_chip_weeks)
     chip_qualities = {}
     for i, chip in enumerate(['wildcard', 'freehit', 'bench_boost', 'triple_captain']):
         last_gw = 38
@@ -365,12 +370,12 @@ def play_chips_or_no(gw, chip_status, chip_threshold_dict, wildcard_pts, freehit
             last_gw = chip_status[chip][1]
         status = (chip_status[chip][0] if chip=='wildcard' else chip_status[chip])
         threshold = chip_threshold_dict[chip]
-        print(chip_status, status, threshold, chip_threshold_dict)
+        if VERBOSITY['brain']: 
+            print(chip_status, status, threshold, chip_threshold_dict)
         if threshold == 0:
             threshold += .00001 # (to avoid divide by 0)
         if not threshold: #Got a False because we didn't have any data for this chip yet
             continue
-        print(gw, last_gw)
         score_to_beat = threshold*tailoff_coeff(gw, chip_threshold_tailoffs[i], last_gw)
         print(tailoff_coeff(gw, chip_threshold_tailoffs[i], last_gw))
         print(chip_threshold_tailoffs[i], score_to_beat)
@@ -399,7 +404,8 @@ def figure_out_substitution(on_field, on_bench, starters, bench):
 
 # this will order the two lists so there is a 1 to 1 correspondance between the positions 
 def match_positions(inbound_list, outbound_list, full_transfer_market):
-    print('at the beginning: ', inbound_list, outbound_list)
+    if VERBOSITY['brain']: 
+        print('at the beginning: ', inbound_list, outbound_list)
     proper_inbound = []
     for player in outbound_list:
         position1 = full_transfer_market.loc[full_transfer_market['element']==player]['position'].tolist()[0]
@@ -410,6 +416,7 @@ def match_positions(inbound_list, outbound_list, full_transfer_market):
                 inbound_list.remove(other_player)
                 break
     
-    print('at the end: ', proper_inbound, outbound_list)
+    if VERBOSITY['brain']: 
+        print('at the end: ', proper_inbound, outbound_list)
     return proper_inbound, outbound_list
 
