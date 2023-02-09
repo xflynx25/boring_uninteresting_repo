@@ -7,6 +7,19 @@ import time
 import ast
 import sys, os
 
+
+def get_deadline_difference(deadline_date, deadline_time):
+    current_date = [int(x) for x in datetime.utcnow().strftime('%Y-%m-%d').split('-')]
+    day_diff =  difference_in_days(current_date, deadline_date)
+    if day_diff > 0:
+        return day_diff
+    else: #check time diff 
+        current_time =  [int(x) for x in datetime.utcnow().strftime('%H:%M:%S').split(':')]
+        if which_time_comes_first(current_time, deadline_time) == 0: 
+            return 0
+        else:
+            return -1
+
 #2019-08-10T11:30:00Z
 def difference_in_days(start_day, end_day):
     root_year, root_month, root_day = start_day
@@ -74,6 +87,11 @@ def difference_in_days(start_day, end_day):
  
     
     return difference
+    
+# returns each in a list in integer format
+def get_year_month_day_hour():
+    t = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return [int(t[s:e]) for s,e in zip([0,5,8,11],[4,7,10,13])] 
 
 def daystring_to_daylist_and_vv(original):
     if type(original) == str:

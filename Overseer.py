@@ -1,8 +1,6 @@
 from calendar import week
 from statistics import variance
 from private_versions.Personalities import Athena_v10a, Athena_v10p
-from Accountant import already_made_moves
-
 import private_versions.constants as constants
 import Oracle 
 import Brain 
@@ -13,15 +11,9 @@ import asyncio
 import pandas as pd
 from datetime import datetime, timezone
 from general_helpers import difference_in_days, which_time_comes_first, safe_read_csv,\
-    safe_to_csv, safer_eval, get_current_day
+    safe_to_csv, safer_eval, get_current_day, get_deadline_difference, get_year_month_day_hour
 from random import random as randomrandom
 import numpy as np 
-
-# to get around this urllib error certificate_verify_failed
-import ssl
-ssl._create_default_https_context = ssl._create_unverified_context
-#import importlib 
-#importlib.reload(Agent)
 print('finished imports ')
 
 ''' #### GENERIC HELPER FUNCTIONS #### '''
@@ -82,19 +74,9 @@ class FPL_AI():
     #currently just set to make transfers randomly on the second or first night before the 
     #gameweek starts, but can be extended to whatever user would like
     def should_we_make_transfer_today(self, decision_args):
-        def get_deadline_difference(gw):
-            deadline_date, deadline_time = Agent.get_deadline(gw)
-            current_date = [int(x) for x in datetime.utcnow().strftime('%Y-%m-%d').split('-')]
-            day_diff =  difference_in_days(current_date, deadline_date)
-            if day_diff > 0:
-                return day_diff
-            else: #check time diff 
-                current_time =  [int(x) for x in datetime.utcnow().strftime('%H:%M:%S').split(':')]
-                if which_time_comes_first(current_time, deadline_time) == 0: 
-                    return 0
-                else:
-                    return -1
-        gw, already_transfered, fix_df = decision_args
+        
+        '''Unpack and get decision data'''
+        gw, already_transfered, has_already_pick_team_today, fix_df = decision_args
         if constants.VERBOSITY['misc']:
             print('in should we make transefer')
             print('gw is ', gw)
@@ -102,9 +84,11 @@ class FPL_AI():
         '''decision'''
         # NEED TO ALSO MAKE SURE THAT IT IS GRABBING THE CORRECT NEXT GAMEWEEK.
         try:
-            days_left = get_deadline_difference(gw)
+            deadline_date, deadline_time = Agent.get_deadline(gw)
+            days_left = get_deadline_difference(deadline_date, deadline_time)
         except:
-            days_left = get_deadline_difference(gw+1)
+            deadline_date, deadline_time = Agent.get_deadline(gw+1)
+            days_left = get_deadline_difference(deadline_date, deadline_time)
             print('thinks its the wrong gw, only moving if next wk starts tmrw')
             return (True, True, gw+1) if days_left==1 else (False, False, gw+1)
         if constants.VERBOSITY['misc']:
@@ -113,8 +97,7 @@ class FPL_AI():
         # IF ALREADY TRANSFERRED, JUST DECIDING WHETHER TO RECOMPUTE PICK_TEAM
         if already_transfered:
             print('already transferred')
-            return (False, days_left <= 2, gw) #we recompute in 2 days preceding deadline in case miss one
-
+            return (False, days_left <= 2 and not has_already_pick_team_today, gw) #we recompute the pick team right before gameweek, once a day only though to save compute
 
         # MAKE SURE ALL THE GAMES HAVE BEEN PLAYED ALREADY THIS WEEK
         if max(fix_df.loc[fix_df['gw']<gw]['day']) > get_current_day():
@@ -130,16 +113,6 @@ class FPL_AI():
             human_inputs_meta.loc[0, 'ft'] = 2
             safe_to_csv(human_inputs_meta, self.folder + 'human_inputs_meta.csv')
             return (False, False, gw)
-
-        """
-        # ALSO MAKE SURE VAASTAV HAS DATA FOR THIS WEEK, (probably don't need this as we have manual vastaav replace but will keep like this for now)
-        try: 
-            wk_stats = get_df_from_internet(constants.VASTAAV_ROOT + self.season + '/gws/gw' + str(gw-1) + '.csv')
-        except:
-            print("Vastaav hasn't uploaded the stats")
-            #raise Exception("Vastaav hasn't uploaded the stats")
-            return (False, False, gw) """
-
 
         # WEIGHTED CHOICE BASED ON WEEK TIMING AND YEAR TIMING OF GW
         EARLY_TRANSFER_AGGRESSIVENESS = self.early_transfer_aggressiveness 
@@ -159,7 +132,18 @@ class FPL_AI():
 
     # This is the file the user interacts with. It tells them what to input into their app, but also gives them the projected scores
     # gw, '' / pts_1 / pts_full , 15 players , c, vc, chip
-    def update_human_outputs(self, necessary_meta, starters, bench_order, captain, vice_captain, this_week_chip):
+    def update_human_outputs(self, necessary_meta, starters, bench_order, captain, vice_captain, this_week_chip, update_chip):
+        #return name (str)
+        # return None if gw not inputted yet
+        def get_week_chip(df, gw):
+            if df.loc[df['gw']==gw].shape[0] == 0:
+                return None
+            return df.loc[(df['gw']==gw)].reset_index(drop=True).loc[0, 'chip']
+        def set_week_chip(df, gw, name):
+            idx = min(df.loc[(df['gw']==gw)].index)
+            df.loc[idx, 'chip'] = name
+            return df
+            
         # Get the three rows for the current week
         ## meta
         gw, name_df, new_team_players = necessary_meta
@@ -179,7 +163,6 @@ class FPL_AI():
         rowone = [gw, 'pts_1'] + points_one + ['', '', '']
         print('rowone', rowone)
         human_outputs.loc[1, :] = rowone
-        
 
         ## third row = pts_6
         #points_full = [np.round(new_team_players.loc[new_team_players['element']==player]['expected_pts_full'], 2) for player in players[:-2]]
@@ -191,11 +174,21 @@ class FPL_AI():
 
         # Read existing and remove currently listed gw if already there
         df = safe_read_csv(self.folder + 'human_outputs.csv')
-        print(df)
         try:
+            ## if a pick team, we don't change the chip signal, read existing
+            if not update_chip:
+                print('not update chip')
+                wk_chip = get_week_chip(df, gw)
+                print('week chip', wk_chip)
+                if wk_chip: #if has been set
+                    print('week chip set')
+                    set_week_chip(human_outputs, gw, wk_chip)
+                    print('wk chip new set')
+
+            # remove previous input for this gw, replace with current
             df = df.loc[df['gw']!=gw, :]
-            print(df)
             df = pd.concat([df, human_outputs], axis=0).reset_index(drop=True)
+
         except: #fails if it is new and no 'gw'
             df = human_outputs
         print(df)
@@ -233,20 +226,18 @@ class FPL_AI():
             import Accountant #it is dependent on this global gw
             name_df = Accountant.make_name_df()
             price_df = Accountant.make_and_save_price_df() # we want to save price info for future learning
+            fix_df = Accountant.make_fixtures_df(self.season)[0]
 
             '''Step 3: Decide if make transfer today'''
-            already_transfered = False
-            fix_df = Accountant.make_fixtures_df(self.season)[0]
-            if Accountant.already_made_moves(self.folder, gw):
-                already_transfered = True
-            #elif asyncio.run(Agent.has_made_transfers_already(self.email, self.password, self.team_id)):
-            #    raise Exception("Have already done transfers for this week but not recorded")
-            decision_args = [gw, already_transfered, fix_df]
+            day = get_year_month_day_hour()[2]
+            decision_args = [gw, Accountant.has_already_transfered(self.folder, gw), Accountant.has_already_pick_team_today(self.folder, day), fix_df]
             make_transfer_today, do_pick_team_today, gw = self.should_we_make_transfer_today(decision_args)
+            if constants.VERBOSITY['misc']:
+                print('the decider results (before constants forcing): ', make_transfer_today, do_pick_team_today, gw)
             if constants.FORCE_MOVE_TODAY:
                 make_transfer_today, do_pick_team_today = True, True
-            if constants.VERBOSITY['misc']:
-                print('the decider results: ', make_transfer_today, do_pick_team_today, gw)
+            if constants.PICK_TEAM_ONLY:
+                make_transfer_today, do_pick_team_today = False, True
             if do_pick_team_today == False:
                 Accountant.log_gameweek_completion(self.folder, gw, [0, 'nothing_today'])
                 return
@@ -387,8 +378,9 @@ class FPL_AI():
                 else:
                     starters, bench_order, captain, vice_captain = Brain.pick_team(team_players, health_df)[0]
                     print('OUR INFO FOR VERIFYING !! \n\n\n starters = ', starters, 'bench order', bench_order, 'captain and vice ', captain, vice_captain, 'OUR INFO FOR VERIFYING !! \n\n\n')   
-                    necessary_meta = gw, name_df, team_players 
-                    self.update_human_outputs(necessary_meta, starters, bench_order, captain, vice_captain, 'normal')
+                    necessary_meta = gw, name_df, team_players
+                    # NEED TO MAKE SURE WE DONT OVERWRITE THE CHIP 
+                    self.update_human_outputs(necessary_meta, starters, bench_order, captain, vice_captain, 'normal', False)
                     Accountant.log_gameweek_completion(self.folder, gw, [0, 'pick_team_only'])
                 return 
 
@@ -490,7 +482,7 @@ class FPL_AI():
                     starters, bench_order, captain, vice_captain = Brain.pick_team(new_team_players, health_df)[0]
                     print('FREEHIT !!!! BEING PLAYED !!!')
                 necessary_meta = gw, name_df, new_team_players 
-                self.update_human_outputs(necessary_meta, starters, bench_order, captain, vice_captain, this_week_chip)
+                self.update_human_outputs(necessary_meta, starters, bench_order, captain, vice_captain, this_week_chip, True)
             
                 '''update the human_inputs_players.csv, and human_inputs_meta.csv, accordingly ''' 
                 # deal with the chips

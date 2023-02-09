@@ -616,7 +616,7 @@ def update_chip_db(folder, gw, wildcard_pts, freehit_pts, captain_pts, bench_pts
 
 
 # checks if overseer has completed the transfers this week
-def already_made_moves(folder, gw):
+def has_already_transfered(folder, gw):
     try:
         path = folder + 'made_moves.csv'
         df = safe_read_csv(path)
@@ -626,11 +626,23 @@ def already_made_moves(folder, gw):
     except: #first time doing this, ['gw'] will register error
         pd.DataFrame().to_csv(path)
         return False
+        
+# checks if overseer has pick team today
+def has_already_pick_team_today(folder, day):
+    try:
+        path = folder + 'made_moves.csv'
+        df = safe_read_csv(path)
+        did_things_df = df.loc[df['chip']=='pick_team_only'] #only when transfers or chips
+        truthality = day in did_things_df['day'].to_list()
+        return truthality
+    except: #first time doing this, ['gw'] will register error
+        pd.DataFrame().to_csv(path)
+        return False
 
 # logs that overseer has completed this week
+# TIME IS LOCAL TIME
 def log_gameweek_completion(folder, gw, transfer_info):
-    t = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    date_info = [int(t[s:e]) for s,e in zip([0,5,8,11],[4,7,10,13])]
+    date_info = get_year_month_day_hour()
     path = folder + 'made_moves.csv'
     df = safe_read_csv(path)
     new_row = pd.DataFrame([[gw] + date_info + transfer_info], columns=['gw','year', 'month', 'day', 'hour','num_transfers', 'chip'])
