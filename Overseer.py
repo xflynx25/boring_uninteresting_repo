@@ -130,6 +130,66 @@ class FPL_AI():
         return to_move, to_move, gw
 
 
+    def self_full_make_transfer_today(self, decision_args):
+        make_transfer_today, do_pick_team_today, gw = self.should_we_make_transfer_today(decision_args)
+        if constants.VERBOSITY['misc']:
+            print('the decider results (before constants forcing): ', make_transfer_today, do_pick_team_today, gw)
+        if constants.FORCE_MOVE_TODAY:
+            make_transfer_today, do_pick_team_today = True, True
+        if constants.PICK_TEAM_ONLY:
+            make_transfer_today, do_pick_team_today = False, True
+        return make_transfer_today, do_pick_team_today
+
+    def get_weekly_point_returns(self, gw, human_inputs_meta, squad, get_raw_gw_df_wrapper):
+        #   this is not done, must query the outputs file to get the proper lineup, but then can get it. 
+        # get past scores, by querying the scores of the past week for current squad. 
+        # and having the previous weeks recorded
+        # this will be a problem during a free hit though. Exception case we deal with.
+        def generic_nan_comparison(a): # ripped off online
+            b = np.nan
+            return (a == b) | ((a != a) & (b != b))
+        weekly_point_returns = {}
+        for x in range(1, gw):
+            gw_points = human_inputs_meta.loc[0, f'points_gw_{x}']
+            if constants.VERBOSITY['Previous_Points_Calculation_Info']:
+                print(f'gw {x} is {gw_points}')
+            if generic_nan_comparison(gw_points):
+                if x == gw - 1:
+                    if constants.VERBOSITY['Previous_Points_Calculation_Info']:
+                        print('in the adjustment')
+                    gw_df, stitching_a_404 = get_raw_gw_df_wrapper(constants.STRING_SEASON, x)
+                    if stitching_a_404:
+                        print(f'vastaav not uploaded gw{x} data yet')
+                    if constants.VERBOSITY['Previous_Points_Calculation_Info']:
+                        print('GW DF IS ', gw_df)
+                    squadplayers = [x[0] for x in squad]
+                    gw_points = gw_df.loc[gw_df['element'].isin(squadplayers)]['total_points'].sum()
+                    if constants.VERBOSITY['Previous_Points_Calculation_Info']:
+                        print(gw_df.loc[gw_df['element'].isin(squadplayers)][['element','total_points']])
+                    # updating the inputs file
+                    human_inputs_meta.loc[0, f'points_gw_{x}'] = gw_points
+                    human_inputs_meta.to_csv(self.folder + 'human_inputs_meta.csv')
+                else:
+                    raise Exception("some earlier week does not have points gw reported")
+            weekly_point_returns[x] = gw_points # we wlil assume captain score + bench subs ~ left bench score  
+        # THIS IS STILL NOT ACCURATELY WORKING, SO YOU NEED TO DO THE POINTS YOURSELF. 
+        # BECAUSE WE NEED TO GET CAPTAIN INFO, & BENCH SUBS, SO NEED MAYBE AN EVALUATOR 
+        # FUNC ... BUT WE CAN STILL WORK BY MANUALLY INPUTTING FOR NOW . 
+        return weekly_point_returns
+
+    
+    def wildcard_adjustment_if_necessary(self, gw, adjusted_chips):
+        if gw <= constants.MANUAL_WILDCARD_DATES[0]:
+            wc_date = constants.MANUAL_WILDCARD_DATES[0]  
+        else:
+            wc_date = constants.MANUAL_WILDCARD_DATES[1] 
+            # if we still have recorded the playtime of the last wildcard, change (read/write)
+            if adjusted_chips[0] <= constants.MANUAL_WILDCARD_DATES[0]:
+                human_inputs_meta = safe_read_csv(self.folder + 'human_inputs_meta.csv')
+                human_inputs_meta.loc[0, 'wc'] = constants.MANUAL_WILDCARD_DATES[1] 
+                safe_to_csv(human_inputs_meta, self.folder + 'human_inputs_meta.csv')
+        return wc_date
+
     # This is the file the user interacts with. It tells them what to input into their app, but also gives them the projected scores
     # gw, '' / pts_1 / pts_full , 15 players , c, vc, chip
     def update_human_outputs(self, necessary_meta, starters, bench_order, captain, vice_captain, this_week_chip, update_chip):
@@ -196,6 +256,8 @@ class FPL_AI():
         # append rows to document
         safe_to_csv(df, self.folder + 'human_outputs.csv')
 
+
+
     ### SUMMARY THROUGH SUBSECTIONS ### 
     '''obtaining metadata'''
     '''decide if make transfer today''' 
@@ -231,13 +293,7 @@ class FPL_AI():
             '''Step 3: Decide if make transfer today'''
             day = get_year_month_day_hour()[2]
             decision_args = [gw, Accountant.has_already_transfered(self.folder, gw), Accountant.has_already_pick_team_today(self.folder, day), fix_df]
-            make_transfer_today, do_pick_team_today, gw = self.should_we_make_transfer_today(decision_args)
-            if constants.VERBOSITY['misc']:
-                print('the decider results (before constants forcing): ', make_transfer_today, do_pick_team_today, gw)
-            if constants.FORCE_MOVE_TODAY:
-                make_transfer_today, do_pick_team_today = True, True
-            if constants.PICK_TEAM_ONLY:
-                make_transfer_today, do_pick_team_today = False, True
+            make_transfer_today, do_pick_team_today = self.self_full_make_transfer_today(decision_args)
             if do_pick_team_today == False:
                 Accountant.log_gameweek_completion(self.folder, gw, [0, 'nothing_today'])
                 return
@@ -247,7 +303,6 @@ class FPL_AI():
             if constants.NO_CAPTCHA:
                 pass
             else: # new method, use human_input.csv
-
                 '''Getting the sell-value of all players'''
                 human_inputs_players = safe_read_csv(self.folder + 'human_inputs_players.csv')
                 human_inputs_players.loc[:, 'current_value'] = human_inputs_players.apply(lambda row: \
@@ -271,55 +326,15 @@ class FPL_AI():
                     adjusted_chips.append(chip_gw)
 
                 # dealing with fact that there are 2 wildcards
-                if gw <= constants.MANUAL_WILDCARD_DATES[0]:
-                    wc_date = constants.MANUAL_WILDCARD_DATES[0]  
-                else:
-                    wc_date = constants.MANUAL_WILDCARD_DATES[1] 
-                    # if we still have recorded the playtime of the last wildcard, change (read/write)
-                    if adjusted_chips[0] <= constants.MANUAL_WILDCARD_DATES[0]:
-                        human_inputs_meta = safe_read_csv(self.folder + 'human_inputs_meta.csv')
-                        human_inputs_meta.loc[0, 'wc'] = constants.MANUAL_WILDCARD_DATES[1] 
-                        safe_to_csv(human_inputs_meta, self.folder + 'human_inputs_meta.csv')
+                wc_date = self.wildcard_adjustment_if_necessary(gw, adjusted_chips)
                 chip_status = {
                     'freehit': adjusted_chips[3], 'bench_boost': adjusted_chips[1], 
                     'triple_captain': adjusted_chips[2], 'wildcard': (adjusted_chips[0], wc_date)
                 }
 
                 '''Past scores must be calculated'''
-                #   this is not done, must query the outputs file to get the proper lineup, but then can get it. 
-                # get past scores, by querying the scores of the past week for current squad. 
-                # and having the previous weeks recorded
-                # this will be a problem during a free hit though. Exception case we deal with.
-                def generic_nan_comparison(a): # ripped off online
-                    b = np.nan
-                    return (a == b) | ((a != a) & (b != b))
-                weekly_point_returns = {}
-                for x in range(1, gw):
-                    gw_points = human_inputs_meta.loc[0, f'points_gw_{x}']
-                    if constants.VERBOSITY['Previous_Points_Calculation_Info']:
-                        print(f'gw {x} is {gw_points}')
-                    if generic_nan_comparison(gw_points):
-                        if x == gw - 1:
-                            if constants.VERBOSITY['Previous_Points_Calculation_Info']:
-                                print('in the adjustment')
-                            gw_df, stitching_a_404 = Accountant.get_raw_gw_df(constants.STRING_SEASON, x)
-                            if stitching_a_404:
-                                print(f'vastaav not uploaded gw{x} data yet')
-                            if constants.VERBOSITY['Previous_Points_Calculation_Info']:
-                                print('GW DF IS ', gw_df)
-                            squadplayers = [x[0] for x in squad]
-                            gw_points = gw_df.loc[gw_df['element'].isin(squadplayers)]['total_points'].sum()
-                            if constants.VERBOSITY['Previous_Points_Calculation_Info']:
-                                print(gw_df.loc[gw_df['element'].isin(squadplayers)][['element','total_points']])
-                            # updating the inputs file
-                            human_inputs_meta.loc[0, f'points_gw_{x}'] = gw_points
-                            human_inputs_meta.to_csv(self.folder + 'human_inputs_meta.csv')
-                        else:
-                            raise Exception("some earlier week does not have points gw reported")
-                    weekly_point_returns[x] = gw_points # we wlil assume captain score + bench subs ~ left bench score  
-                # THIS IS STILL NOT ACCURATELY WORKING, SO YOU NEED TO DO THE POINTS YOURSELF. 
-                # BECAUSE WE NEED TO GET CAPTAIN INFO, & BENCH SUBS, SO NEED MAYBE AN EVALUATOR 
-                # FUNC ... BUT WE CAN STILL WORK BY MANUALLY INPUTTING FOR NOW . 
+                func_wrapper = lambda x: Accountant.get_raw_gw_df(*x)
+                weekly_point_returns = self.get_weekly_point_returns(gw, human_inputs_meta, squad, func_wrapper)
     
             if constants.VERBOSITY['squad']:
                 print(gw, squad, sell_value, free_transfers, chip_status, weekly_point_returns)
@@ -530,8 +545,8 @@ class FPL_AI():
         except Exception as e:
             import traceback, sys
             traceback.print_exc(file=sys.stdout)
-            no_input_gmail = constants.NOTIFICATION_SENDER_GMAIL == "" or constants.NOTIFICATION_SENDER_PASSWORD == "" #still need to catch more problems
-            send_email, send_password = [(self.email, self.password) if no_input_gmail else (constants.NOTIFICATION_SENDER_GMAIL,constants.NOTIFICATION_SENDER_PASSWORD)][0]
+            #no_input_gmail = constants.NOTIFICATION_SENDER_GMAIL == "" or constants.NOTIFICATION_SENDER_PASSWORD == "" #still need to catch more problems
+            #send_email, send_password = [(self.email, self.password) if no_input_gmail else (constants.NOTIFICATION_SENDER_GMAIL,constants.NOTIFICATION_SENDER_PASSWORD)][0]
             try:
                 gw += 0
             except: # make sure we send errors even when we die before the error starts
@@ -547,8 +562,6 @@ class FPL_AI():
  
 
 
-        
-import sys 
 if __name__ == '__main__':
     from private_versions.Personalities import personalities_to_run
     for pers in personalities_to_run:

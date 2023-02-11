@@ -84,14 +84,20 @@ def difference_in_days(start_day, end_day):
                 #for m in range(1, month):
                 #    difference += days_in_month[m]
                 #difference += day
- 
-    
+     
     return difference
     
 # returns each in a list in integer format
 def get_year_month_day_hour():
     t = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     return [int(t[s:e]) for s,e in zip([0,5,8,11],[4,7,10,13])] 
+    
+def get_year_month_day_hour_minute_second():
+    t = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    return [int(t[s:e]) for s,e in zip([0,5,8,11,14,17],[4,7,10,13,16,19])] 
+
+def get_year_month_day_string():
+    return datetime.now().strftime('%Y-%m-%d')
 
 def daystring_to_daylist_and_vv(original):
     if type(original) == str:

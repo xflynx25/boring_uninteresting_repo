@@ -1,18 +1,22 @@
 import pandas as pd
 from datetime import datetime
-from general_helpers import safe_read_csv
+from general_helpers import safe_read_csv, get_year_month_day_string, get_year_month_day_hour_minute_second
 import sys
+import time
 
-def main():
-    
+def main():    
     try:
         # for automation purposes, only run once per day since our choice function includes this
         if sys.argv[-1] == 'automated':
             from private_versions.constants import DROPBOX_PATH
-            date_info = get_year_month_day_hour()
+            date_info = get_year_month_day_hour_minute_second()
             date, time = date_info[:3], date_info[3:]
             print('Local Time: ', date[0], ' ', date[1], ' ', date[2], ' ', end=",, ")
             print(time[0], ' ', time[1], ' ', time[2])
+
+            # above for printing to stdout, here for saving to csv
+            # seperation is historic, not logical
+            date = get_year_month_day_string()
             
             # record all runs of script
             verifying_action = safe_read_csv(DROPBOX_PATH + 'verified.csv')
@@ -61,4 +65,6 @@ def main():
 
 
 if __name__ == '__main__':
+    start = time.time()
     main()
+    print('RunTime = ', round((time.time() - start)/60, 2), ' minutes')

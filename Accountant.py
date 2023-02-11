@@ -42,6 +42,20 @@ def make_name_df():
     name_df = players_raw[['id','web_name']]
     name_df.columns = ['element','name']
     return name_df
+
+# make the name column be their full name and their web name so fully searchable
+def make_name_df_full():
+    url = 'https://fantasy.premierleague.com/api/bootstrap-static/'
+    response = proper_request("GET", url, headers=None)
+    players_raw = pd.DataFrame(response.json()['elements'])
+    name_df = players_raw[['id','web_name', 'first_name', 'second_name']]
+    new_names = []
+    for i, row in name_df.iterrows():
+        newname = name_df.loc[i, 'first_name'] + ' ' + name_df.loc[i, 'second_name'] # + ' = ' + name_df.loc[i, 'web_name'] 
+        id = name_df.loc[i, 'id'] 
+        new_names.append([id, newname])
+    name_df = pd.DataFrame(new_names, columns=['id', 'name'])
+    return name_df
     
 # @return: df w/ a,d,i,u statuses for this week, save all weeks
 def make_and_save_health_df(gw):
