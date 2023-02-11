@@ -47,11 +47,8 @@ def main():
             
         
         # main chunk
-        from Overseer import FPL_AI
-        from private_versions.Personalities import personalities_to_run
-        for pers in personalities_to_run:
-            ai = FPL_AI(**pers)
-            ai.make_moves()
+        from Overseer import run_orders
+        run_orders()
 
         # suceeded without shutting off 
         if sys.argv[-1] == 'automated':
@@ -59,9 +56,6 @@ def main():
 
     except Exception as e:
         print('Hit Exception: ', e)
-
-
-
 
 
 if __name__ == '__main__':

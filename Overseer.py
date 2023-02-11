@@ -11,9 +11,11 @@ import asyncio
 import pandas as pd
 from datetime import datetime, timezone
 from general_helpers import difference_in_days, which_time_comes_first, safe_read_csv,\
-    safe_to_csv, safer_eval, get_current_day, get_deadline_difference, get_year_month_day_hour
+    safe_to_csv, safer_eval, get_current_day, get_deadline_difference, \
+    get_year_month_day_hour, get_user_personality
 from random import random as randomrandom
 import numpy as np 
+from Overseer_helpers import add_to_orders, remove_from_orders
 print('finished imports ')
 
 ''' #### GENERIC HELPER FUNCTIONS #### '''
@@ -156,7 +158,7 @@ class FPL_AI():
             if generic_nan_comparison(gw_points):
                 if x == gw - 1:
                     if constants.VERBOSITY['Previous_Points_Calculation_Info']:
-                        print('in the adjustment')
+                        print('Getting Points Scored By Team')
                     gw_df, stitching_a_404 = get_raw_gw_df_wrapper(constants.STRING_SEASON, x)
                     if stitching_a_404:
                         print(f'vastaav not uploaded gw{x} data yet')
@@ -176,6 +178,7 @@ class FPL_AI():
         # BECAUSE WE NEED TO GET CAPTAIN INFO, & BENCH SUBS, SO NEED MAYBE AN EVALUATOR 
         # FUNC ... BUT WE CAN STILL WORK BY MANUALLY INPUTTING FOR NOW . 
         return weekly_point_returns
+
 
     
     def wildcard_adjustment_if_necessary(self, gw, adjusted_chips):
@@ -286,7 +289,7 @@ class FPL_AI():
             '''Step 2: Accountant Import'''
             constants.change_global_last_gameweek(gw)
             import Accountant #it is dependent on this global gw
-            name_df = Accountant.make_name_df()
+            name_df = Accountant.make_name_df() 
             price_df = Accountant.make_and_save_price_df() # we want to save price info for future learning
             fix_df = Accountant.make_fixtures_df(self.season)[0]
 
@@ -559,11 +562,23 @@ class FPL_AI():
                 
                 f.write(f"Date: {date} -- " + str(e) + '\n')
 
- 
 
+# executes everything that is in orderbook 
+def run_orders():
+    with open(constants.DROPBOX_PATH + 'orders.txt', 'r') as f:
+        users_to_run = [p for p in f.read().splitlines() if p[0] != '#'] #allows commenting
+    print(f'Todays Orders = {users_to_run}')
+
+    # run them
+    for user in users_to_run[:constants.MAX_QUEUED_USERS]:
+        try:
+            personality = get_user_personality(user)
+            ai = FPL_AI(**personality)
+            print(f'User {user} exists')
+            ai.make_moves()
+        except: 
+            print("User Doesn't Exist")
 
 if __name__ == '__main__':
-    from private_versions.Personalities import personalities_to_run
-    for pers in personalities_to_run:
-        ai = FPL_AI(**pers)
-        ai.make_moves()
+    #from private_versions.Personalities import personalities_to_run
+    run_orders()

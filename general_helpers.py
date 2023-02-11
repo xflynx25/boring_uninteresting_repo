@@ -6,7 +6,28 @@ from datetime import datetime
 import time
 import ast
 import sys, os
+import json
 
+def get_user_folder_from_user(user):
+    return DROPBOX_PATH + user + '/'
+
+def save_user_personality(user, personality):
+    user_folder = get_user_folder_from_user(user)
+    with open(user_folder + "personality.json", "w") as outfile:
+        json.dump(personality, outfile)
+    print('User Personality Saved')
+
+# json auto changes the inner dict keys to be strings rather than integers, so we have to change back
+def unpack_personality(filename):    
+    personality = json.load(open(filename))
+    for key in ['hesitancy_dict', 'min_delta_dict']:
+        personality[key] = {int(ok):{int(k):v for k,v in inner_dict.items()} \
+                for ok,inner_dict in personality[key].items()}
+    return personality
+
+def get_user_personality(user):
+    user_folder = get_user_folder_from_user(user)
+    return unpack_personality(user_folder + 'personality.json')
 
 def get_deadline_difference(deadline_date, deadline_time):
     current_date = [int(x) for x in datetime.utcnow().strftime('%Y-%m-%d').split('-')]

@@ -54,7 +54,7 @@ def make_name_df_full():
         newname = name_df.loc[i, 'first_name'] + ' ' + name_df.loc[i, 'second_name'] # + ' = ' + name_df.loc[i, 'web_name'] 
         id = name_df.loc[i, 'id'] 
         new_names.append([id, newname])
-    name_df = pd.DataFrame(new_names, columns=['id', 'name'])
+    name_df = pd.DataFrame(new_names, columns=['element', 'name'])
     return name_df
     
 # @return: df w/ a,d,i,u statuses for this week, save all weeks

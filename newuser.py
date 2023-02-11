@@ -24,18 +24,22 @@ allow to put in their previous point scores, but to allow skip and we use defaul
 ## - points each gw (optional)
 # File Preferences
 ## - Name of your folder
-## - Password if you'd like
 
 from Agent import get_current_gw
 from private_versions.constants import DROPBOX_PATH, STRING_SEASON, DEFAULT_REFERENCE_USER
-from general_helpers import safe_make_folder, safe_read_csv, safe_to_csv
+from general_helpers import safe_make_folder, safe_read_csv, safe_to_csv, \
+    get_user_folder_from_user, get_user_personality, save_user_personality
 from private_versions.DefaultPersonalities import DEFAULT_PERSONALITY_NAMES, create_default_personality
 import os
+print('here')
 import shutil
 import pandas as pd
 from Accountant import make_name_df_full
+print('there')
 import json
+from Overseer_helpers import add_to_orders, remove_from_orders
 
+print('past imports')
 # query user input
 def q(prompt):
     print(prompt, end='> ')
@@ -73,10 +77,20 @@ def is_yes(resp):
 def get_teamname():
     while True:
         teamname = q('Team Name')
-        if '.' in teamname:
+        if '..' in teamname:
             print('stop trying to hack')
         else:
-            return teamname
+            if os.path.exists(get_user_folder_from_user('ClientPersonalities/' + teamname)):
+                return teamname
+            else:
+                print("Not an existing TEAM")
+
+def query_df_gw(filename):    
+    df = safe_read_csv(filename)
+    gw = query_number(0, 39, 'which gameweek you would like to look at, 0 for all')
+    if gw != 0:
+        df = df.loc[df['gw']==gw]
+    return df  
 
 def get_player_name_loop(name_df, name_list, name_list_lower):
     while True:
@@ -92,7 +106,7 @@ def get_player_name_loop(name_df, name_list, name_list_lower):
         else:
             chosen_player = options[x-1]
             print(f'SELECTED {chosen_player}')
-            id = name_df.loc[name_df['name']==chosen_player]['id'].to_numpy()[0]
+            id = name_df.loc[name_df['name']==chosen_player]['element'].to_numpy()[0]
             return id
 
 
@@ -109,10 +123,11 @@ while True:
     print('     3) Remove Existing Team') # deletes the folder
     print('     4) Run Team') # runs overseer
     print('     5) Check Outputs')  # send message if haven't run yet, if so give them the command to open the excel (for made_moves and human_outputs)
-    print('     6) General Statistics') # Prints some interesting lists
+    print('     6) Activate Team (will run automatically like official athena teams)') # Prints some interesting lists
+    print('     7) View Player Rankings') # Prints some interesting lists
     print('|                                       |')
     print('-----------------------------------------')
-    x = query_number(0, 7)
+    x = query_number(0, 8)
 
     if x == 0:
         print('Thanks for hanging out! :)')
@@ -124,15 +139,13 @@ while True:
         gw = query_number(1, 39, 'what gameweek is it')
         
 
-        ##### username and password
+        ##### username and 
         teamname = q('What should we name your team')
-        team_folder = DROPBOX_PATH + 'ClientPersonalities/' + teamname + '/'
+        user = 'ClientPersonalities/' + teamname
+        team_folder = get_user_folder_from_user(user)
         if os.path.exists(team_folder):
             print('Team already exists. If you would like to create a new team with this name, delete the old team')
             exit()
-        resp = q('Would you like to make a password so only you can touch this team?\n')
-        if is_yes(resp):
-            password = q('Choose a Password')
 
         ##### selecting personality and creating folder
         print_options = DEFAULT_PERSONALITY_NAMES + ['Design your own (Time Est. 3 Mins)']
@@ -256,12 +269,11 @@ while True:
             ft += 1
         else:
             ft = query_number(0, 3)
-        itb = q('How much in the bank? Enter as an integer (e.g. for 1.3 million, enter 13)')
-        fh = q('What week did you play freehit? Enter 38 for unplayed')
-        bb = q('What week did you play bench boost? Enter 38 for unplayed')
-        tc = q('What week did you play triple captain? Enter 38 for unplayed')
-        wc = q('What week did you play the current wildcard?\nIf unplayed, enter the last gameweek to play THIS CURRENT wildcard (either 38 or something around 18)\n')
-
+        itb = query_number(0, 1000, 'How much in the bank? Enter as an integer (e.g. for 1.3 million, enter 13)')
+        fh = query_number(1, 39, 'What week did you play freehit? Enter 38 for unplayed')
+        bb = query_number(1, 39,'What week did you play bench boost? Enter 38 for unplayed')
+        tc = query_number(1, 39,'What week did you play triple captain? Enter 38 for unplayed')
+        wc = query_number(1, 39,'What week did you play the current wildcard?\nIf unplayed, enter the last gameweek to play THIS CURRENT wildcard (either 38 or something around 18)\n')
         ##### optional points each gw
         print('\n\n$$$ OPTIONAL, TYPE IN YOUR POINTS FOR EACH GAMEWEEK $$$\n$$$ This is used to make decisions on wildcarding $$$')
         print(' ------------------------------------------------------')
@@ -316,46 +328,165 @@ while True:
             df = pd.concat([df, new_row], axis=1)
         df.to_csv(team_folder + 'made_moves.csv')
 
-        with open(team_folder + "personality.json", "w") as outfile:
-            json.dump(personality, outfile)
+        save_user_personality(user, personality)
 
     elif x == 2:
         print('Oh did you make a different transfer than you were suggested to make?')
         print('Here you can make changes to your files')
-        print('This is not implemented yet because you may as well just make a new team')
-        print('Please delete your old team and make a new one. Thanks')
 
-        # realistically just need to get itb and ft
-        # and then allow them to do player substitutions
+        team_folder = get_user_folder_from_user('ClientPersonalities/' + get_teamname())
+        meta_inputs_file = team_folder + 'human_inputs_meta.csv'
+        player_intputs_file = team_folder + 'human_inputs_players.csv'
+        made_moves_file = team_folder + 'made_moves.csv'
+
+        # ITB, FT, CHIPS
+        print('First Need to Recalibrate the MetaData')
+        df = safe_read_csv(meta_inputs_file)
+        
+        # same loop as x == 1
+        gw = query_number(1, 39, 'what gameweek is it')
+        moved = is_yes(q('Have you made your moves already this week? (y or n)'))
+        print('How many Free Transfers')
+        if moved:
+            ft = query_number(-1, 3)
+            ft += 1
+        else:
+            ft = query_number(0, 3)
+        itb = query_number(0, 1000, 'How much in the bank? Enter as an integer (e.g. for 1.3 million, enter 13)')
+        fh = query_number(1, 39, 'What week did you play freehit? Enter 38 for unplayed')
+        bb = query_number(1, 39,'What week did you play bench boost? Enter 38 for unplayed')
+        tc = query_number(1, 39,'What week did you play triple captain? Enter 38 for unplayed')
+        wc = query_number(1, 39,'What week did you play the current wildcard?\nIf unplayed, enter the last gameweek to play THIS CURRENT wildcard (either 38 or something around 18)\n')
+        df.loc[0, ['itb', 'ft', 'wc', 'bb', 'tc', 'fh']] = [itb, ft, wc, bb, tc, fh]
+        safe_to_csv(df, meta_inputs_file)
+
+        # edit the made moves 
+        df = safe_read_csv(made_moves_file)
+        df = df.loc[df['gw']<gw, :] # we don't want this gw
+        if moved:
+            new_row = pd.DataFrame([[gw, 0,0,0,0,0,'normal']], columns=df.columns)
+            df = pd.concat([df, new_row], axis=0)
+        df.to_csv(team_folder + 'made_moves.csv')
+        
+        # Change Player Loop
         ## show the team, and then say would you like to do transfers
+        print('\nNow you can change what players you are listed as having.\nDo so at your own risk,\
+            if you end up with the wrong number per position you will break things\nYou can also use this to adjust purchase price\n--------------------------')
+        name_df = make_name_df_full()
+        name_list = name_df['name'].to_numpy()
+        name_list_lower = [word.lower() for word in name_list]
+        df = safe_read_csv(player_intputs_file)
+        while True:
+            # print team 
+            for i, row in df.iterrows():
+                id, purchase_value = row 
+                name = name_df.loc[name_df['element']==id]['name'].to_numpy()[0]
+                print(f'{i}) {name}')
+
+            # get someone to get rid of
+            rid_num = query_number(0, 16, 'Pick a number to get rid of, 15 to be done')
+            if rid_num == 15:
+                break
+
+            # get someone to bring in
+            print('\nPlayer to bring in', end='')
+            id = get_player_name_loop(name_df, name_list, name_list_lower)
+            price = query_number(0, 200, querystring='Purchase Price')
+            df.loc[rid_num, ['player', 'purchase_value']] = [id, price]
+
 
     elif x == 3: 
         teamname = get_teamname()
         try: 
-            team_folder = DROPBOX_PATH + 'ClientPersonalities/' + teamname + '/'
+            user = 'ClientPersonalities/' + get_teamname()
+            # if in the running set, get rid of it
+            remove_from_orders()
+
+            # remove the folder
+            team_folder = get_user_folder_from_user(user)
             shutil.rmtree(team_folder)
             print(f'{teamname} has been successfully removed')
         except:
             print(f'{teamname} could not be found')
 
     elif x == 4:
-        team_folder = DROPBOX_PATH + 'ClientPersonalities/' + get_teamname() + '/'
-        from Overseer import FPL_AI
-        personality = json.load(open(team_folder + "personality.json"))
-        # json auto changes the inner dict keys to be strings rather than integers, so we have to change back
-        for key in ['hesitancy_dict', 'min_delta_dict']:
-            print('in the iteration')
-            personality[key] = {int(ok):{int(k):v for k,v in inner_dict.items()} \
-                 for ok,inner_dict in personality[key].items()}
-        print(personality['hesitancy_dict'])
-                
-        ai = FPL_AI(**personality)
+        personality = get_user_personality('ClientPersonalities/' + get_teamname()) 
         print('BE PATIENT -- RUNNING TEAM -- \nWILL TAKE EITHER <5 MINUTES OR UP TO AN HOUR, \ndepending on if other teams have been run today')
+        from Overseer import FPL_AI             
+        ai = FPL_AI(**personality)
         ai.make_moves()
 
     elif x == 5:
-        print('check outputs needs to be implemented')
+        team_folder = get_user_folder_from_user('ClientPersonalities/' + get_teamname())
+        made_moves_file = team_folder + 'made_moves.csv'
+        team_outputs_file = team_folder + 'human_outputs.csv'
+
+        # Display Made Moves
+        print('Showing when moves have been made')
+        df = query_df_gw(made_moves_file)
+        for i, row in df.iterrows():
+            gw, yr, month, day, hour, num_transfers, chip = row.to_numpy()
+            print(f'{month}/{day}/{str(yr)[2:]} , gw{gw} == {chip} - {num_transfers} transfer(s)')
+
+        # Display Team Outputs
+        print('\nShowing Current Chosen Team, \nwith projected ppg next game (N1) and next 6 (N6)\nYes, the bench is ordered')
+        df = query_df_gw(team_outputs_file)
+        for gw in df.copy()['gw'].unique():
+            print(f'\nGAMEWEEK {gw}\n######################################')
+            print('       NAME       |   N1   |   N6    |\n=======================================')
+            dfgw = df.loc[df['gw']==gw].reset_index(drop=True)
+            captain, vc, chip = dfgw.loc[0, ['captain', 'vc', 'chip']].to_numpy()
+            for i in range(1, 16):
+                player, score_one, score_six = dfgw.loc[:, f'name_{i}'].to_numpy()
+                if player == captain:
+                    player += ' (C)'
+                if player == vc:
+                    player += ' (vc)'
+                player = player + ' '*max(0, (17 - len(player)))
+                score_one = str(score_one) + ' '*(4-len(str(score_one)))
+                score_six = str(score_six) + ' '*(4-len(str(score_six)))
+                print(f'{player} |  {score_one}  |  {score_six}   |')
+                if i == 11:
+                    print ('--------------------------------------')
+                    
+            print('\n Chip is ', chip, '\n')
 
 
     elif x == 6:
-        print('Week statistics Yet to be Implemented')
+        user = 'ClientPersonalities/' + get_teamname()
+        add_to_orders(user)
+        
+
+    elif x == 7:
+        full_df = safe_read_csv(DROPBOX_PATH + 'full_transfer_market.csv')
+        name_df = make_name_df_full()
+        full_df['name'] = full_df.apply(lambda row: name_df.loc[name_df['element']==row['element']]['name'].to_numpy()[0], axis=1)
+        while True:
+            print('\nPLAYER RANKINGS\n----------------\n0)EXIT\n1)Next Match Points\n2)Expected pts over 6 gwks\n----------------------')
+            x = query_number(0, 3)
+            if x > 0:
+                col = ('expected_pts_full' if  x == 2 else 'expected_pts_N1')
+                print('\n0) OVERALL RANKINGS\n1)goalkeepers\n2)defenders\n3)midfielders\n4)forwards\n---------------')
+                x = query_number(0, 5)
+
+                df = full_df.sort_values(by=col, ascending=False)
+                if x != 0:
+                    df = df.loc[df['position']==x]
+
+                maxn = query_number(1, 10000, 'See only top how many values')
+
+                # now displaying
+                print(f'RANKING FOR {col}')
+                for i, row in df.reset_index(drop=True).iterrows():
+                    if i >= maxn:
+                        break
+                    player, score = row[['name', col]] 
+                    playerstring = player + ' '*max(0, (32 - len(player)))
+                    score = round(float(score), 2)
+                    scorestring = str(score) + ' '*(4-len(str(score)))
+                    rankstring = f'Rank {i + 1} ' 
+                    rankstring += ' '*(9 - len(rankstring)) 
+                    print(f'{rankstring} = {playerstring} |  {scorestring}  |')
+            else:
+                break
+

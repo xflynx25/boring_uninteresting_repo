@@ -155,7 +155,9 @@ def simulate_season(data_df, starting_team, gw1_pick_team, transfer_function, wh
 
     
 #@ return some_dict 
-#@ param: bench is a list, team is df
+#@ param: bench is a list of elements
+# ####### team is df which has element and position
+# ####### results is the gw df with just [['element', 'position', 'minutes_N1', 'total_points_N1']]
 def score_round(results, team, chip, captain, vcaptain, bench_list, hit):
     bench_set = {x for x in bench_list}
     score = 0
