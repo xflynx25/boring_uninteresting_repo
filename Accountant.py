@@ -655,6 +655,7 @@ def has_already_pick_team_today(folder, day):
 
 # logs that overseer has completed this week
 # TIME IS LOCAL TIME
+# also should log the higher order df if anything relevant happened today
 def log_gameweek_completion(folder, gw, transfer_info):
     date_info = get_year_month_day_hour()
     path = folder + 'made_moves.csv'
@@ -662,6 +663,15 @@ def log_gameweek_completion(folder, gw, transfer_info):
     new_row = pd.DataFrame([[gw] + date_info + transfer_info], columns=['gw','year', 'month', 'day', 'hour','num_transfers', 'chip'])
     final_df = pd.concat([df, new_row], axis=0)
     final_df.to_csv(path)
+
+    # NOW LOGGING THE HIGHER ORDER CSV 
+    if transfer_info[1] != 'nothing_today':
+        path =  DROPBOX_PATH + 'any_made_moves.csv'
+        df = safe_read_csv(path)
+        username_roughly = folder.split('/')[-1]
+        new_row = pd.DataFrame([date_info + [username_roughly]], columns=['year', 'month', 'day', 'user'])
+        final_df = pd.concat([df, new_row], axis=0)
+        final_df.to_csv(path)
 
 #return true if the csv sees evidence of database and predictions constructed today
 def check_if_explored_today():

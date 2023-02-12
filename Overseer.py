@@ -364,6 +364,10 @@ class FPL_AI():
 
             '''Step 7: Getting the scoreboard = player predicted performances'''
             ### NEW MODELS ###
+            # Other models can be plugged in by fulfilling the API
+            # API = produce full_transfer_market
+            # ===== [element position team value status expected_pts_N1	expected_pts_full]
+
             force_remake = self.force_remake or not(explored_already_today)
             adjustment_information = squad, player_injury_penalties, blank_players
             tms_index = (0 if type(self.when_transfer) == str else [l.count(gw) for l in self.when_transfer].index(1)) # should be rewritten to just take into account time of week

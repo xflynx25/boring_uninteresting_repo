@@ -34,25 +34,15 @@ def main():
                 new_row_df = pd.DataFrame([[date, 'yes']], columns=['date', 'success'])
                 main_script_df = pd.concat([main_script_df, new_row_df], axis=0, ignore_index=True)
                 
-        # often running on a different computer
-        else:
-            print('hello backup computer')
-            print('still yet to figure out how to properly do this')
-            print('what we are aiming to do is allow the variable to be changed based on a sysargv arg')
-            print('but the variable we are importing in different files')
-            #import private_versions.malleable_constants 
-            #private_versions.malleable_constants.change_computer_username(private_versions.malleable_constants.BACKUP_COMPUTER_WHO_RUNS_MAIN_SCRIPT)
-            #private_versions.malleable_constants.change_c_entry(private_versions.malleable_constants.BACKUP_COMPUTER_OS_RUNS_MAIN_SCRIPT)
-            #print(private_versions.malleable_constants.C_ENTRY, private_versions.malleable_constants.COMPUTER_USERNAME)
-            
-        
-        # main chunk
-        from Overseer import run_orders
-        run_orders()
+            # main chunk
+            from Overseer import run_orders
+            run_orders()
 
-        # suceeded without shutting off 
-        if sys.argv[-1] == 'automated':
-            main_script_df.to_csv(DROPBOX_PATH + 'automated_action_taken.csv')
+            # suceeded without shutting off 
+            if sys.argv[-1] == 'automated':
+                main_script_df.to_csv(DROPBOX_PATH + 'automated_action_taken.csv')
+        else:
+            print('forgot automated keyword')
 
     except Exception as e:
         print('Hit Exception: ', e)
