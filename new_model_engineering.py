@@ -8,7 +8,8 @@ def elapsed_time(prefix='Time since last call = '):
     print(round(now - START, 2))
     START = now 
 elapsed_time()
-from private_versions.malleable_constants import C_DROPBOX_PATH as DROPBOX_PATH
+#from private_versions.malleable_constants import C_DROPBOX_PATH as DROPBOX_PATH
+from private_versions.malleable_constants import DROPBOX_PATH
 CENTURY = 20
 elapsed_time()
 from general_helpers import drop_columns_containing, get_columns_containing, safe_make_folder
@@ -72,10 +73,12 @@ def prepare_for_regression(df, back, forward, target, remove_inactive=False):
     target_df = df[targ]
 
     # rid of features for model forward/back
+    print('drop features')
     df = drop_back_and_forward_features(df, back, forward, target)
 
     #get the matrices for regression & train model
     X,y = drop_nan_rows(df, target_df)
+    print('nan dropped')
     return X, y 
 
 # model should implement fit_model(X,y)
@@ -85,9 +88,13 @@ def train_model(train_df, features, back, forward, target, fit_model_func, train
     remove_inactive = False
     if train_benchmark == 'six':
         remove_inactive = True
+    print('prepare for regression')
     X, y = prepare_for_regression(df, back, forward, target, remove_inactive=remove_inactive)
+    print('before fit')
     model = fit_model_func(X, y)
     feature_names = X.columns.to_list() 
+    
+    print('OOB SCORE IS ::==:: ', model.oob_score_)
     return model, feature_names
 
 # Various benchmarks are available
@@ -156,11 +163,12 @@ TEST_DF3 = pd.read_csv(yearly_dataset_paths[3])
 TEST_DF4 = pd.read_csv(yearly_dataset_paths[4])
 elapsed_time('Loading datasets')
 
+
 #%%
 
 # returns a fit model on the data
 def randomForestRegression(X, y, n, max_features=1.0):
-    model = RandomForestRegressor(n_estimators=n, max_features=max_features)
+    model = RandomForestRegressor(n_estimators=n, max_features=max_features, oob_score=True)
     model.fit(X,y)
     return model
 
@@ -208,13 +216,15 @@ test_dfs = [TEST_DF0, TEST_DF1, TEST_DF4]
 
 PAST_YEAR_MODEL = DROPBOX_PATH + 'models/Current/no_ictANY_transfers_price/1236-1-1.sav'
 
-ns = [30, 60, 90, 120]
-max_featuress = ('sqrt', 'log2', round(1 / NUM_FEATURES, 4))
+ns = [10, 150, 175, 190]
+max_featuress = reversed([1.0, 'sqrt', 'log2', round(3 / NUM_FEATURES, 5), round(1 / NUM_FEATURES, 5)]) # also trying choice of 3
+print(max_featuress)
 train_benchmarks = ['full', 'six']
 test_benchmarks = ['six']
 test_dfs = [TEST_DF4]
 
 TRAIN_DF = pd.concat([TEST_DF0, TEST_DF1, TEST_DF2, TEST_DF3], axis=0)
+TRAIN_DF = TEST_DF1
 
 # TO DO A FULL TESTING
 TRAIN_DF = drop_columns_containing(['season_'], TRAIN_DF) #### IN CASE WE FORGET TO REMOVE FROM THE END OF SEASON IF THIS WAS NOT SOME SORT OF ONE TIME ERROR
@@ -229,7 +239,7 @@ test_back = {1,2,3,6}
 test_forward = {1}
 test_target = 1
 
-EXPERIMENT_NAME = 'full_data_first'
+EXPERIMENT_NAME = 'full_data_bign'
 
 error_prints = []
 print('hello')
@@ -238,8 +248,10 @@ for n in ns:
     for max_features in max_featuress: # last one get's no choice on the split
         print('started a max features')
         for train_benchmark in train_benchmarks:
+            print('in train_benchmark')
             fit_model_func = lambda x,y: randomForestRegression(x,y,n, max_features=max_features)
             model, feature_names = train_model(TRAIN_DF, FEATURES, train_back, train_forward, train_target, fit_model_func, train_benchmark)
+            print('trained model')
             #model, FEATURES = joblib.load(PAST_YEAR_MODEL)
             #FEATURES += ['total_points_N1']
             filename = EXPERIMENT_NAME + '/' + str(train_benchmark) + str(max_features) + str(n) + '.png'

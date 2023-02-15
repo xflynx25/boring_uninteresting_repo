@@ -102,7 +102,10 @@ class FPL_AI():
             return (False, days_left <= 2 and not has_already_pick_team_today, gw) #we recompute the pick team right before gameweek, once a day only though to save compute
 
         # MAKE SURE ALL THE GAMES HAVE BEEN PLAYED ALREADY THIS WEEK
-        if max(fix_df.loc[fix_df['gw']<gw]['day']) > get_current_day():
+        # If they have just finished today, we will not transfer today. 
+        # This creates problems if a gw ends day before new one starts
+        # maybe should use british time to allow for night transfers in this way
+        if max(fix_df.loc[fix_df['gw']<gw]['day']) >= get_current_day():
             print("All week games haven't finished")
             return (False, False, gw)
 
@@ -159,7 +162,7 @@ class FPL_AI():
                 if x == gw - 1:
                     if constants.VERBOSITY['Previous_Points_Calculation_Info']:
                         print('Getting Points Scored By Team')
-                    gw_df, stitching_a_404 = get_raw_gw_df_wrapper(constants.STRING_SEASON, x)
+                    gw_df, stitching_a_404 = get_raw_gw_df_wrapper([constants.STRING_SEASON, x])
                     if stitching_a_404:
                         print(f'vastaav not uploaded gw{x} data yet')
                     if constants.VERBOSITY['Previous_Points_Calculation_Info']:
@@ -300,6 +303,8 @@ class FPL_AI():
             if do_pick_team_today == False:
                 Accountant.log_gameweek_completion(self.folder, gw, [0, 'nothing_today'])
                 return
+
+            raise Exception('NOT GOING PAST RIGHT NOW')
 
 
             '''Step 4: Obtaining rest of metadata'''

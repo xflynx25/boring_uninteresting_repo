@@ -28,14 +28,29 @@ def unpack_personality(filename):
 def get_user_personality(user):
     user_folder = get_user_folder_from_user(user)
     return unpack_personality(user_folder + 'personality.json')
+    
+# GETTING UTC TIMES
+def get_year_month_day_hour():
+    t = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    return [int(t[s:e]) for s,e in zip([0,5,8,11],[4,7,10,13])] 
+    
+def get_year_month_day_hour_minute_second():
+    t = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+    return [int(t[s:e]) for s,e in zip([0,5,8,11,14,17],[4,7,10,13,16,19])] 
+
+def get_year_month_day_string():
+    return datetime.utcnow().strftime('%Y-%m-%d')
+
+def get_hour_minute_second_string():
+    return datetime.utcnow().strftime('%H:%M:%S')
 
 def get_deadline_difference(deadline_date, deadline_time):
-    current_date = [int(x) for x in datetime.utcnow().strftime('%Y-%m-%d').split('-')]
+    current_date = [int(x) for x in get_year_month_day_string().split('-')]
     day_diff =  difference_in_days(current_date, deadline_date)
     if day_diff > 0:
         return day_diff
     else: #check time diff 
-        current_time =  [int(x) for x in datetime.utcnow().strftime('%H:%M:%S').split(':')]
+        current_time =  [int(x) for x in get_hour_minute_second_string().split(':')]
         if which_time_comes_first(current_time, deadline_time) == 0: 
             return 0
         else:
@@ -108,17 +123,6 @@ def difference_in_days(start_day, end_day):
      
     return difference
     
-# returns each in a list in integer format
-def get_year_month_day_hour():
-    t = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    return [int(t[s:e]) for s,e in zip([0,5,8,11],[4,7,10,13])] 
-    
-def get_year_month_day_hour_minute_second():
-    t = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    return [int(t[s:e]) for s,e in zip([0,5,8,11,14,17],[4,7,10,13,16,19])] 
-
-def get_year_month_day_string():
-    return datetime.now().strftime('%Y-%m-%d')
 
 def daystring_to_daylist_and_vv(original):
     if type(original) == str:
@@ -138,7 +142,7 @@ def get_current_day():
     df_raw = pd.DataFrame(response.json())
     day0 = sorted(df_raw['kickoff_time'].dropna().unique())[0]
     day0 = daystring_to_daylist_and_vv(day0)
-    daynow = datetime.today().strftime('%Y-%m-%d')
+    daynow = get_year_month_day_string()
     daynow = daystring_to_daylist_and_vv(daynow)
 
     return difference_in_days(day0, daynow)
