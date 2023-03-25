@@ -23,7 +23,7 @@ from general_helpers import get_columns_containing, safe_make_folder, safer_eval
 import pandas as pd
 import time
 import math
-from private_versions.constants import DROPBOX_PATH, UPDATED_TRAINING_DB, TRANSFER_MARKET_SAVED,  MAX_FORWARD_CREATED, NUM_PLAYERS_ON_SCOREBOARD,\
+from constants import DROPBOX_PATH, UPDATED_TRAINING_DB, TRANSFER_MARKET_SAVED,  MAX_FORWARD_CREATED, NUM_PLAYERS_ON_SCOREBOARD,\
     VERBOSITY, SCOREBOARD_VERBOSITY, SCOREBOARD_PRINT_VERSION
 from Oracle_helpers import save_model, load_model, drop_back_and_forward_features, train_rf_with_threshold,\
     drop_nan_rows, get_backward, long_term_benchwarmer, get_sets_from_name, blank_row, is_useful_model,\

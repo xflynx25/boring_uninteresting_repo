@@ -26,10 +26,10 @@ allow to put in their previous point scores, but to allow skip and we use defaul
 ## - Name of your folder
 
 from Agent import get_current_gw
-from private_versions.constants import DROPBOX_PATH, STRING_SEASON, DEFAULT_REFERENCE_USER
+from constants import DROPBOX_PATH, STRING_SEASON, DEFAULT_REFERENCE_USER
 from general_helpers import safe_make_folder, safe_read_csv, safe_to_csv, \
     get_user_folder_from_user, get_user_personality, save_user_personality
-from private_versions.DefaultPersonalities import DEFAULT_PERSONALITY_NAMES, create_default_personality
+from DefaultPersonalities import DEFAULT_PERSONALITY_NAMES, create_default_personality
 import os
 print('here')
 import shutil

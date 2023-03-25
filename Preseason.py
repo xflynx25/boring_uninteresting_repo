@@ -38,7 +38,7 @@ New strat 8/4/22:
     (whole optimization is done together. Some more thought may be needed)
 5) remember to throw out status != 'a'
 """
-from private_versions.constants import STRING_SEASON, VASTAAV_ROOT
+from constants import STRING_SEASON, VASTAAV_ROOT
 from Requests import get_df_from_internet
 import pandas as pd
 import numpy as np 

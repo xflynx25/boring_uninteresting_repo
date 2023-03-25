@@ -8,7 +8,7 @@ def main():
     try:
         # for automation purposes, only run once per day since our choice function includes this
         if sys.argv[-1] == 'automated':
-            from private_versions.constants import DROPBOX_PATH
+            from constants import DROPBOX_PATH
             date_info = get_year_month_day_hour_minute_second()
             date, time = date_info[:3], date_info[3:]
             print('Local Time: ', date[0], ' ', date[1], ' ', date[2], ' ', end=",, ")

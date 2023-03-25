@@ -5,7 +5,7 @@ To optimize this for nn use we should eliminate the saving and reading and rathe
 """
 
 
-import private_versions.constants as constants
+import constants as constants
 import Oracle 
 import Brain 
 import pandas as pd

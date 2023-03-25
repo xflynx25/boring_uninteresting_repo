@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np 
 from itertools import combinations
 from collections import Counter
-from private_versions.constants import DROPBOX_PATH, VERBOSITY
+from constants import DROPBOX_PATH, VERBOSITY
 import time
 import random
 from general_helpers import get_columns_containing, safer_eval

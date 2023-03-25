@@ -4,7 +4,7 @@ import io
 import time
 import pandas as pd
 from math import log2
-from private_versions.constants import RAPID_API_HOST, RAPID_API_KEY, INT_SEASON_START
+from constants import RAPID_API_HOST, RAPID_API_KEY, INT_SEASON_START
 
 ENCODING1 = 'UTF-8'
 ENCODING2 = 'ISO-8859-1'

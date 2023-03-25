@@ -1,4 +1,4 @@
-import private_versions.constants as constants
+import constants as constants
 
 def add_to_orders(user):
     with open(constants.DROPBOX_PATH + 'orders.txt', 'r') as f:

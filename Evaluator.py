@@ -6,7 +6,7 @@ f (season, starting_team, g(processed_data, current_team, sell_value, free_trans
 """
 #!%%
 print('first thing on the page')
-from private_versions.constants import DROPBOX_PATH, WILDCARD_2_GW_STARTS, change_wildcard_depth, POINT_HISTORY_REFERENCE_PATH
+from constants import DROPBOX_PATH, WILDCARD_2_GW_STARTS, change_wildcard_depth, POINT_HISTORY_REFERENCE_PATH
 
 change_wildcard_depth(4) # 4 for now because just speed running for evaluator, 5 for actual
 

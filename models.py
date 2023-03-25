@@ -4,7 +4,7 @@ It will also return the folder name.
 These models are called by user manually in create many model suites
 """
 #%%
-from private_versions.constants import UPDATED_TRAINING_DB, DROPBOX_PATH
+from constants import UPDATED_TRAINING_DB, DROPBOX_PATH
 CENTURY = 20
 from Oracle import train_model_suite
 from Oracle_helpers import load_model

@@ -1,5 +1,5 @@
 import pandas as pd
-from private_versions.constants import DROPBOX_PATH
+from constants import DROPBOX_PATH
 from os import makedirs
 from Requests import proper_request
 from datetime import datetime
@@ -36,7 +36,9 @@ def get_year_month_day_hour():
     
 def get_year_month_day_hour_minute_second():
     t = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-    return [int(t[s:e]) for s,e in zip([0,5,8,11,14,17],[4,7,10,13,16,19])] 
+    timings = [int(t[s:e]) for s,e in zip([0,5,8,11,14,17],[4,7,10,13,16,19])] 
+    print(timings)
+    return timings
 
 def get_year_month_day_string():
     return datetime.utcnow().strftime('%Y-%m-%d')

@@ -1,4 +1,4 @@
-from private_versions.constants import STRING_SEASON
+from constants import STRING_SEASON
 import importlib 
 import Accountant_2helpers 
 importlib.reload(Accountant_2helpers)

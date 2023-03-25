@@ -15,7 +15,7 @@
 import time
 from datetime import datetime
 import importlib 
-from private_versions.constants import INT_SEASON_START, STRING_SEASON, DONT_TRY_TO_PATCH_ODDS
+from constants import INT_SEASON_START, STRING_SEASON, DONT_TRY_TO_PATCH_ODDS
 import Accountant_helpers 
 importlib.reload(Accountant_helpers)
 from Accountant_helpers import * #helper functions
@@ -668,8 +668,8 @@ def log_gameweek_completion(folder, gw, transfer_info):
     if transfer_info[1] != 'nothing_today':
         path =  DROPBOX_PATH + 'any_made_moves.csv'
         df = safe_read_csv(path)
-        username_roughly = folder.split('/')[-1]
-        new_row = pd.DataFrame([date_info + [username_roughly]], columns=['year', 'month', 'day', 'user'])
+        username_roughly = (folder.split('/')[-1] if folder[-1] != '/' else folder.split('/')[-2])
+        new_row = pd.DataFrame([date_info + [username_roughly]], columns=['year', 'month', 'day', 'hour', 'user'])
         final_df = pd.concat([df, new_row], axis=0)
         final_df.to_csv(path)
 

@@ -1,4 +1,4 @@
-from private_versions.constants import DROPBOX_PATH, TM_FOLDER_ROOT
+from constants import DROPBOX_PATH, TM_FOLDER_ROOT
 from general_helpers import get_data_df, get_meta_gwks_dfs, get_counts
 import pandas as pd
 import random
@@ -119,7 +119,7 @@ def get_league_player_starting_team(season, rank, league, interval):
     return players, pick_team
 
     
-from private_versions.constants import DROPBOX_PATH
+from constants import DROPBOX_PATH
 import pandas as pd
 # @param: for saving purposes, params is dict of bools (transfers, each chip, change_captain)
 # @return: save into the csv a constructed season

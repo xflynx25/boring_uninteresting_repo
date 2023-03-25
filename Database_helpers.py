@@ -3,9 +3,9 @@ import os
 import pandas as pd
 import numpy as np
 from collections import Counter
-from private_versions.constants import DATAHUB, LAST_GAMEWEEK, CORE_STATS, DROPBOX_PATH, NEW_STATS, BOOLEAN_STATS
-from private_versions.constants import database_core as CORE_META
-from private_versions.constants import database_team as TEAM_META
+from constants import DATAHUB, LAST_GAMEWEEK, CORE_STATS, DROPBOX_PATH, NEW_STATS, BOOLEAN_STATS
+from constants import database_core as CORE_META
+from constants import database_team as TEAM_META
 from general_helpers import get_columns_containing, drop_columns_containing
 
 ROOT = DROPBOX_PATH + r"vaastav\data"

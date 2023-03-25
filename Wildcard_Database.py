@@ -1,5 +1,5 @@
 #%%
-from private_versions.constants import DROPBOX_PATH, TM_FOLDER
+from constants import DROPBOX_PATH, TM_FOLDER
 import pandas as pd
     
 

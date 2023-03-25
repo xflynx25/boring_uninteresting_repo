@@ -1,7 +1,7 @@
 from calendar import week
 from statistics import variance
-from private_versions.Personalities import Athena_v10a, Athena_v10p
-import private_versions.constants as constants
+from Personalities import Athena_v10a, Athena_v10p
+import constants as constants
 import Oracle 
 import Brain 
 import Agent 
@@ -292,7 +292,7 @@ class FPL_AI():
             '''Step 2: Accountant Import'''
             constants.change_global_last_gameweek(gw)
             import Accountant #it is dependent on this global gw
-            name_df = Accountant.make_name_df() 
+            name_df = Accountant.make_name_df_full()#make_name_df()  # trying full for a bit because unclear conflicts, also will allow computation cuz invertable
             price_df = Accountant.make_and_save_price_df() # we want to save price info for future learning
             fix_df = Accountant.make_fixtures_df(self.season)[0]
 
@@ -303,9 +303,6 @@ class FPL_AI():
             if do_pick_team_today == False:
                 Accountant.log_gameweek_completion(self.folder, gw, [0, 'nothing_today'])
                 return
-
-            raise Exception('NOT GOING PAST RIGHT NOW')
-
 
             '''Step 4: Obtaining rest of metadata'''
             if constants.NO_CAPTCHA:

@@ -17,7 +17,7 @@ from Brain_helpers import kill_irrelevants_and_sort, check_feasibility_and_get_d
     get_points, get_starters_and_bench, find_healthy_best_captains, transfer_option_names, rename_expected_pts,\
     filter_transfering_healthy_players, get_bench_order, get_bench_order_with_keeper, randomly_shuffle_n_players,\
     search_v2, safer_eval
-from private_versions.constants import WILDCARD_DEPTH_PARAM, VERBOSITY
+from constants import WILDCARD_DEPTH_PARAM, VERBOSITY
 import time
 
 

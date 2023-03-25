@@ -4,7 +4,7 @@ import math
 from RandomForest import randomForestRegression
 import pickle
 from general_helpers import drop_columns_containing, get_columns_containing
-from private_versions.constants import MAX_FORWARD_CREATED, TRANSFER_MARKET_VISUALIZATION_ROUNDING
+from constants import MAX_FORWARD_CREATED, TRANSFER_MARKET_VISUALIZATION_ROUNDING
 import joblib
 
 # players that play less than this many minutes in the whole season will be dropped

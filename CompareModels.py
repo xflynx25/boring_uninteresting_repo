@@ -5,7 +5,7 @@ Call this file with different model folders, or combination of models,
 
 import pandas as pd
 import Oracle
-from private_versions.constants import TRANSFER_MARKET_SAVED, DROPBOX_PATH
+from constants import TRANSFER_MARKET_SAVED, DROPBOX_PATH
 import Accountant
 from general_helpers import safe_read_csv
 from Agent import injury_penalties, get_current_gw

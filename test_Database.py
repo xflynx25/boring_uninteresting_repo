@@ -1,7 +1,7 @@
 # page with tester functions to verify the database is working properly. 
 # if they fail the test, we return info, else, we return Falsey (as in they didn't fail)
 from operator import index
-from private_versions.constants import DROPBOX_PATH
+from constants import DROPBOX_PATH
 import pandas as pd
 
 def test_columns_are_of_single_type(df):

@@ -11,7 +11,7 @@ from Requests import proper_request
 import pandas as pd
 import aiohttp
 import asyncio
-from private_versions.constants import NO_CAPTCHA
+from constants import NO_CAPTCHA
 if NO_CAPTCHA:
     from FPL_Remote.fpl import FPL
 import smtplib
