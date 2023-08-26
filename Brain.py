@@ -359,7 +359,7 @@ def play_chips_or_no(gw, chip_status, chip_threshold_dict, wildcard_pts, freehit
         'freehit': freehit_pts,
         'bench_boost': bench_pts,
         'triple_captain': captain_pts
-    }
+    } 
     if VERBOSITY['brain_important']: 
         print('this week chip scores: ', this_week_chip_scores, '\n chip thresholds: ', chip_threshold_dict)
         print(earliest_chip_weeks)

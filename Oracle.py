@@ -144,6 +144,8 @@ def make_model_dict(gw, model_suite, preloaded=False, model_folder = 'Current'):
     chdir(DROPBOX_PATH + f"models/{model_folder}/" + model_suite)
     files = listdir()
 
+    print('model suite is : ', model_suite)
+
     model_dict = {}
     for filename in files:
         back, _, target = get_sets_from_name(filename[:-4])
@@ -152,6 +154,7 @@ def make_model_dict(gw, model_suite, preloaded=False, model_folder = 'Current'):
             if preloaded: #OVERLOADING
                 model, feature_names = preloaded[model_suite][filename]
             else:
+                print('loading model ', filename)
                 model, feature_names  = load_model(filename)
             model_dict[key] = (model, feature_names)
         

@@ -149,7 +149,7 @@ def individual_game_odds(premier_league, final_odds, fixtures_df, current_gw, wh
 ######################### Main Functions for Building Processed#########
 
 def get_raw_gw_df(season, gw):
-    stitching_a_404 = False
+    stitching_a_404 = False 
     try: 
         filename = VASTAAV_ROOT + season + '/gws/gw' + str(gw) + '.csv'
         gw_df = get_df_from_internet(filename)

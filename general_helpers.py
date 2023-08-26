@@ -296,6 +296,9 @@ def safer_eval(string):
 
 ##### THESE HELPERS ARE FOR THE SPECIFIC FANTASY WEBSITE NOT FOR A GENERAL WEBSITE ####
 
+
+# WILL THIS STILL WORK IF THEY ARE SOMEHOW CAPTCHA THE BOTS?? 
+# MIGHT HAVE TO USE THE MANUAL SIGN IN METHOD 
 USERNAME_ID = "loginUsername"
 PASSWORD_ID = "loginPassword"
 SUBMIT_BUTTON_CLASSES = ["ArrowButton-thcy3w-0","hHgZrv"]
@@ -318,6 +321,11 @@ def logout_from_website(driver, login_url):
         time.sleep(2)
         driver.find_element_by_link_text('Sign Out').click()
         time.sleep(1)
+
+
+def login_to_website_manual(driver, login_url, wait_time):
+    driver.get(login_url)
+    time.sleep(wait_time)
 
 def blockPrint():
     sys.stdout = open(os.devnull, 'w')

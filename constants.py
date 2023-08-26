@@ -1,15 +1,16 @@
 # page containing necessary constants for import across different files
-from private_versions.private_constants import DROPBOX_PATH, RAPID_API_KEY
+from private_versions.private_constants import DROPBOX_PATH, RAPID_API_KEY, WEBDRIVER_PATH, \
+    WEBDRIVER_BINARY_LOC
 
 # FPL SEASON INFORMATION
 CENTURY = 20
-INT_SEASON_START = 2022
+INT_SEASON_START = 2023
 STRING_SEASON = f'{INT_SEASON_START}-{str(INT_SEASON_START+1)[2:]}'
-WILDCARD_2_GW_STARTS = {'2022-23':18, 2223: 18, '2021-22': 17, 2122: 17,'2020-21': 17, 2021: 17, '2017-18': 17, 1718: 17, '2016-17': 17, 1617: 17,\
-     '2018-19': 17, 1819: 17, }#we manually write this in for fetching player data, ONLY REALLY KNOW FOR 2021 and after
+WILDCARD_2_GW_STARTS = {'2023-24':18, 2324: 18, '2022-23':18, 2223: 18, '2021-22': 17, 2122: 17,'2020-21': 17, 2021: 17, '2017-18': 17, 1718: 17,\
+            '2016-17': 17, 1617: 17, '2018-19': 17, 1819: 17, }#we manually write this in for fetching player data, ONLY REALLY KNOW FOR 2021 and after
 
 # last date of the wildcard that you personally want, check to see if should be replaced with the above
-MANUAL_WILDCARD_DATES = (17, 38)
+MANUAL_WILDCARD_DATES = (16, 38)
 
 
 MAX_FORWARD_CREATED = 6 #10 #at least
@@ -27,7 +28,8 @@ VASTAAV_NO_RESPONSE_WEEKS = []
 NUM_PLAYERS_ON_SCOREBOARD = 50
 
 FORCE_MODERN_WILDCARD = False
-DONT_TRY_TO_PATCH_ODDS = True
+DONT_TRY_TO_PATCH_ODDS = True # set to True unless you just updated the dataset by pulling from: https://www.football-data.co.uk/
+ALLOW_AUTOMATED_PATCHING = False
 
 TRANSFER_MARKET_VISUALIZATION_ROUNDING = 3
 SCOREBOARD_PRINT_VERSION = 'new'
@@ -94,6 +96,13 @@ api_stats_team = ['FTgf', 'Sf', 'STf', 'Cf', 'Ff','FTga', 'Sa', 'STa', 'Ca', 'Fa
 ###    'creativity', 'threat', 'ict_index', 'fouls', 'key_passes', 'open_play_crosses', 'offside', 'recoveries', 'big_errors',\
 ###    'yellow_cards', 'red_cards','tackled', 'tackles', 'target_missed', 'own_goals', 'penalties_conceded','penalties_missed',\
 ###    'penalties_saved', 'saves','winning_goals', 'minutes','total_points','transfers_in','transfers_out','transfers_balance']
+
+
+'''for scraping postseason'''
+LEAGUE_FETCHING_LOGIN_CREDENTIALS = ['athenav1.0a@gmail.com', 'Alphafpl2022!', 6140897]#EMAIL, PASSWORD, TEAM_ID
+LEAGUE_FETCHING_NUM_PLAYERS_ON_PAGE = 50
+WILDCARD_2_GW_START = 19
+
 
 # BAD CODE STRUCTURING REQUIRES ACCESS TO THIS, BUT PEOPLE NEED TO CHANGE IT
 LAST_GAMEWEEK = 38

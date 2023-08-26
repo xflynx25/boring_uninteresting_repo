@@ -1,14 +1,10 @@
-Turn on mykindemailhelper less secure apps every 2 months or so
-
 pull the top players info at the end of every season
 
 run the new models
 
-check email for chips
-
 make sure turning computer on to run itself
 
-make sure api is not expiring, and the api has not updated the specifications
+make sure api is not expiring, and the api has not updated the specifications!!
 
 make sure vastaav is still collecting data
 
@@ -18,8 +14,10 @@ Might need to go in and run patch=True on update_odds_df() in Accountant. Right 
 
 If you miss odds go to the website: https://www.football-data.co.uk/englandm.php 
 
+dropbox files might not be downloaded and causing problems 
 
-YearINT below is 2022 not 2122 for the 21-22 season. We use other format for database. 
+
+YearINT below is 2022 not 2122 for the 21-22 season. We use other format for database. Why?
 
 YEARLY MAINTANENCE: 
     END OF SEASON (collecting the data):
@@ -42,3 +40,18 @@ YEARLY MAINTANENCE:
 
 
     PRESEASON (setting the constants and drafting): 
+        - change constants (year & wlidcard)
+        - copy over the old personalities, change the years
+        - fill out human_inputs_meta (itb, ft, chips, & set pts to 0), human_inputs_players (from vaastav)
+        - don't need to have human_outputs since we have safe_read_csv makes it automatically
+        - should be ready to run overseer.py
+        - after it works in week 2, can set up the cronjob
+        - the api key might have run out if odds aren't updating properly 
+
+
+PROBLEMS WITH SIMPLE MAINTENANCE: 
+. some hardcoded filepaths in personalities, and seasons that need to be manually changed
+. should make the distinction between just gathering data for my personal datasets, and acting on data for the teams -- more clear. 
+    We should want it to do a quick data collection of things like injuries and price and stuff to build up our dataset, 
+    but not go through all the ml computatins and stuff. 
+. 

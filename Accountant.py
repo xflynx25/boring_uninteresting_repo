@@ -15,7 +15,7 @@
 import time
 from datetime import datetime
 import importlib 
-from constants import INT_SEASON_START, STRING_SEASON, DONT_TRY_TO_PATCH_ODDS
+from constants import INT_SEASON_START, STRING_SEASON, DONT_TRY_TO_PATCH_ODDS, ALLOW_AUTOMATED_PATCHING
 import Accountant_helpers 
 importlib.reload(Accountant_helpers)
 from Accountant_helpers import * #helper functions
@@ -202,7 +202,6 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
         '''Replace any previous failures using backup database'''
         # Might struggle if odds have been recorded earlier for things postponed, bcz 1 extra odds in there
         # Might struggle with dgw odds?
-        
         if VERBOSITY['odds']:
             print(fixtures_df['gw'].unique())
             print(fixtures_df)
@@ -211,8 +210,10 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
         recorded_games =  final_odds.shape[0]
         if VERBOSITY['odds_important']:
             print('Games Played: ', completed_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
+        print('gamessss == ', completed_games , rescheduled_games , recorded_games)
         if completed_games + rescheduled_games > recorded_games: 
             patch = True
+            print('patching')
         if patch:
             '''manual patching'''
             relevant = ['Date', 'HomeTeam', 'AwayTeam', 'B365H', 'B365D', 'B365A']
@@ -224,19 +225,21 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
                 print('Backup odds incoming at: ', BACKUP_ODDS)
                 print(database)
             final_odds = patch_odds(final_odds, database, fixtures_df, current_gw)  
+            print('after final odds')
 
 
         '''Fill in anything missing, including this week, targetting just their specific game id'''
         '''Currentally skipping because don't see much use in it and will just result in wasted api calls'''
-        requested_games = fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2 
-        recorded_games =  final_odds.shape[0]
-        if VERBOSITY['odds_important']:
-            print('Requested games: ', requested_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
-        if requested_games + rescheduled_games > final_odds.shape[0]: 
+        if ALLOW_AUTOMATED_PATCHING:
+            requested_games = fixtures_df.loc[fixtures_df['gw']<=current_gw].shape[0] // 2 
+            recorded_games =  final_odds.shape[0]
             if VERBOSITY['odds_important']:
-                print('secondary patching')
-            clutch_odds = individual_game_odds(premier_league, final_odds, fixtures_df, current_gw) #from helpers
-            final_odds = pd.concat([final_odds, clutch_odds], axis=0, sort=True).reset_index(drop=True)
+                print('Requested games: ', requested_games, ' -  Recorded So far: ', recorded_games, ' -  Rescheduled: ', rescheduled_games)
+            if requested_games + rescheduled_games > final_odds.shape[0]: 
+                if VERBOSITY['odds_important']:
+                    print('secondary patching')
+                clutch_odds = individual_game_odds(premier_league, final_odds, fixtures_df, current_gw) #from helpers
+                final_odds = pd.concat([final_odds, clutch_odds], axis=0, sort=True).reset_index(drop=True)
 
     '''Make the odds integers'''
     final_odds = final_odds.astype({'oddsH':'float', 'oddsA': 'float', 'oddsD': 'float'})
@@ -522,9 +525,9 @@ def finish_recording_season_gw38(season):
     redefine_globals(prefix)
     fixtures_df = pd.read_csv(prefix + "fix_df.csv", index_col=0)
     current_gw = 39
-    update_odds_df(fixtures_df, current_gw, patch=False) # set patch to true if there have been canceled games this season screwing up the odds
+    odds_df = update_odds_df(fixtures_df, current_gw, patch=False) # set patch to true if there have been canceled games this season screwing up the odds
     update_player_previous(season, current_gw) 
-    update_team_previous(current_gw, fixtures_df)
+    update_team_previous(current_gw, fixtures_df, odds_df)
     print('updated all tables')
 
 # The way to create the yearly datasets post 2019
@@ -535,17 +538,25 @@ def get_season_data_and_save(season, form_lengths, forward_pred_lengths):
     current_gw = 38
     fixtures_df = pd.read_csv(prefix + "fix_df.csv", index_col=0)
     raw_players = pd.read_csv(PLAYER_DB, index_col=0)
-    current = processing_overseer(current_gw, form_lengths, forward_pred_lengths, fixtures_df, raw_players, getting_postseason = True)
     int_season = int(season[2:4]) * 100 + int(season[5:7])
+    
+    # save progress in case the internet stuff fails 
+    current = processing_overseer(current_gw, form_lengths, forward_pred_lengths, fixtures_df, raw_players, getting_postseason = True)
     current['season'] = int_season
+    current.to_csv(prefix + f"Processed_Dataset_noNames_{int_season}.csv")
+    #current = safe_read_csv(prefix + f"Processed_Dataset_noNames_{int_season}.csv")
 
     # adding name column
     names = {}
     for gw in range(1,39):
-        vaast_path = VASTAAV_ROOT + season + '/gws/gw' + str(gw) + '.csv'
-        for i, row in Requests.get_df_from_internet(vaast_path).iterrows():
-            if row['element'] not in names.keys():
-                names[row['element']] = row['name']
+        try:
+            vaast_path = VASTAAV_ROOT + season + '/gws/gw' + str(gw) + '.csv'
+            print(f'requesting gw {gw} for name col')
+            for i, row in Requests.get_df_from_internet(vaast_path).iterrows():
+                if row['element'] not in names.keys():
+                    names[row['element']] = row['name']
+        except: # doing this should only throw a bug if there is a player that only competes in the gwks which vastaav somehow failed to upload 
+            print('NAME COLUMN FAILED!!!!')
     name_col = current.apply(lambda x: names[x['element']], axis=1)
     current.insert(2, 'name', name_col, True)
 
@@ -711,5 +722,5 @@ def update_explored_today():
 if __name__ == "__main__":
     FORM_LENGTHS = [1,2,3,6]
     PREDICTION_LENGTHS = [1,2,3,4,5,6]
-    finish_recording_season_gw38(STRING_SEASON)
-    #get_season_data_and_save(STRING_SEASON, FORM_LENGTHS, PREDICTION_LENGTHS) 
+    #finish_recording_season_gw38(STRING_SEASON)
+    get_season_data_and_save(STRING_SEASON, FORM_LENGTHS, PREDICTION_LENGTHS) 

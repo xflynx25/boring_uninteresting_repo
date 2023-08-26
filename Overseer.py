@@ -310,6 +310,10 @@ class FPL_AI():
             else: # new method, use human_input.csv
                 '''Getting the sell-value of all players'''
                 human_inputs_players = safe_read_csv(self.folder + 'human_inputs_players.csv')
+                for elemcheck in (12, 58, 103, 558):
+                    val = price_df.loc[price_df['element']==elemcheck]['value'].to_numpy()[0]
+                    print(elemcheck, ' = ', val)
+                print(human_inputs_players)
                 human_inputs_players.loc[:, 'current_value'] = human_inputs_players.apply(lambda row: \
                     price_df.loc[price_df['element']==row['player']]['value'].to_numpy()[0], axis=1)
                 human_inputs_players.loc[:, 'sell_value'] = human_inputs_players.apply(lambda row: \
@@ -326,7 +330,7 @@ class FPL_AI():
                 # chip info can easily be stored, we seed it with the end dates for each, or the played date
                 adjusted_chips = []
                 for chip_gw in wc, bb, tc, fh:
-                    if chip_gw > gw:
+                    if chip_gw >= gw:
                         chip_gw = 0
                     adjusted_chips.append(chip_gw)
 
@@ -350,7 +354,9 @@ class FPL_AI():
                 print('Has explored already today? ', explored_already_today)
             current_gw_stats = safe_read_csv(constants.DROPBOX_PATH + "current_stats.csv") #speedup if multiple personalities
             if not(explored_already_today) or current_gw_stats.loc[current_gw_stats['gw']==gw].shape[0] == 0: # only run once per day
-                current_gw_stats = Accountant.current_week_full_stats(self.season, {1,2,3,6}, {1,3,6}, ignore_gwks=IGNORE_GWKS)
+                gwks_left = 38 - gw + 1
+                forward_preds = ({1,3,6} if gwks_left >= 6 else set(list(range(1,gwks_left+1)))) # shortcut the computation and storage on most weeks except when we need the computations
+                current_gw_stats = Accountant.current_week_full_stats(self.season, {1,2,3,6}, forward_preds, ignore_gwks=IGNORE_GWKS)
                 current_gw_stats.to_csv(constants.DROPBOX_PATH + "current_stats.csv") 
                 pd.DataFrame().to_csv(constants.TRANSFER_MARKET_SAVED) #reset transfer market every time update gw_stats
             
@@ -427,12 +433,10 @@ class FPL_AI():
 
 
             '''Step 11.0: Evaluating Free Hit'''
-            if not(chip_status['freehit']):
-                freehit_players, freehit_pts = Brain.free_hit_team(full_transfer_market, sell_value, self.freehit_bench_factor,\
-                    allowed_healths=self.allowed_healths)
-                freehit_pts -= Brain.get_points(team_players.drop('expected_pts_full', axis=1), self.freehit_bench_factor)
-            else:
-                freehit_pts, freehit_players = .1, new_team_players
+            freehit_players, freehit_pts = Brain.free_hit_team(full_transfer_market, sell_value, self.freehit_bench_factor,\
+                allowed_healths=self.allowed_healths)
+            freehit_pts -= Brain.get_points(team_players.drop('expected_pts_full', axis=1), self.freehit_bench_factor)
+        
 
             '''Step 11.1: Evaluating Modern Wildcard'''
             if self.wildcard_method == 'modern': # these points on a 0-1 range

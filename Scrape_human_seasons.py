@@ -1,3 +1,14 @@
+## SCRAPING VIA SELENIUM NOW SEEMS TO BE OFF THE TABLE, 
+## THEY HAVE SOPHISTICATED MECHANISMS IN PLACE TO PREVENT THIS, AND NOT WORTH THE EFFORT TO EVADE
+"""
+examples include [according to chat gpt])
+User-Agent: The User-Agent string sent by WebDriver-driven browsers is often different than the ones sent by a regular, user-controlled browser. Websites can compare the incoming User-Agent against a list of known WebDriver User-Agents, and block or challenge requests they suspect are automated.
+WebDriver flag: WebDriver adds a navigator.webdriver flag to JavaScript when it controls a browser. This flag is true when the browser is being controlled by automation software, and false otherwise. Some websites check this flag on the client side to detect WebDriver sessions.
+Browser capabilities and properties: Websites can inspect certain properties of the browser that might reveal it's being controlled by WebDriver. For instance, WebDriver might not have plugins installed that a regular user would have. It might not store or send cookies in the same way a regular user's browser would. The timing and ordering of requests might also be unusual.
+Behavioral characteristics: Websites might detect that a browser is being controlled by WebDriver based on the way it interacts with the site. For example, real users rarely load a page and do nothing else. If you're just making a driver.get(url) call and then doing nothing, that's a strong signal you might be a bot.
+"""
+
+
 # go through top 100k or something and record their transfers every week, can use this for training
 # an imitation bot.
 
@@ -6,15 +17,27 @@
 
 # give some time between requests so don't get fpl busy to making captcha
 
+# odds this will work is pretty low i would think
+
 from Requests import proper_request
-from general_helpers import login_to_website, logout_from_website
-from constants import DROPBOX_PATH, LEAGUE_FETCHING_LOGIN_CREDENTIALS, LEAGUE_FETCHING_NUM_PLAYERS_ON_PAGE, WILDCARD_2_GW_START
+from general_helpers import login_to_website, logout_from_website, login_to_website_manual
+from constants import DROPBOX_PATH, LEAGUE_FETCHING_LOGIN_CREDENTIALS, LEAGUE_FETCHING_NUM_PLAYERS_ON_PAGE, \
+    WILDCARD_2_GW_START, INT_SEASON_START, WEBDRIVER_PATH, WEBDRIVER_BINARY_LOC
+
 from selenium import webdriver
-driver = webdriver.Chrome() #webdriver.Firefox()
+options = webdriver.ChromeOptions()
+options.binary_location = WEBDRIVER_BINARY_LOC
+driver_path = WEBDRIVER_PATH 
+driver = webdriver.Chrome(options = options, executable_path = driver_path)
+
 HOSTNAME = 'https://fantasy.premierleague.com'
-destination_folderpath = DROPBOX_PATH + "Human_Seasons/2021/"
+destination_folderpath = DROPBOX_PATH + f"Human_Seasons/{INT_SEASON_START}/"
 LOGIN_URL = HOSTNAME
 EMAIL, PASSWORD, TEAM_ID = LEAGUE_FETCHING_LOGIN_CREDENTIALS
+LOGIN_WAIT_TIME = 30 #seconds
+MANUAL_LOGIN = True # otherwise tries to use email,pass (deprecated )
+
+DEFAULT_WAIT_TIME = 3
 
 NUM_PLAYERS_ON_PAGE = LEAGUE_FETCHING_NUM_PLAYERS_ON_PAGE
 LAST_GW = 38
@@ -48,13 +71,13 @@ def safe_url(url):
         url = HOSTNAME + url
     return url
 
-def get_soup(url, wait_time = 1):
+def get_soup(url, wait_time = DEFAULT_WAIT_TIME):
     url = safe_url(url)
     driver.get(url)
     time.sleep(wait_time)
     return BeautifulSoup(driver.page_source, 'html.parser')
 
-def get_soup_and_oneclick_soup(url, click_text, wait_time = 1):
+def get_soup_and_oneclick_soup(url, click_text, wait_time = DEFAULT_WAIT_TIME):
     url = safe_url(url)
     driver.get(url)
     time.sleep(wait_time)
@@ -174,14 +197,20 @@ def get_elements_from_namestrings_and_team(gw, bad_tuples, name_team_pos_df, vis
 # might break if someone joined late, we are requesting a page for the event for every gw 
 # for a season username -> userplace & starting 15, when chips
 # userplace, gw, inb (set), outb (set), chip (0-4), c, vc, bench (set)
-def get_top_players(name_team_df, num_players, save_interval = 500, visualize=False, league_name = 'Overall', start_at_rank=1):
-    login_to_website(driver, LOGIN_URL, EMAIL, PASSWORD)
+def get_top_players(num_players, save_interval = 500, visualize=False, league_name = 'Overall', start_at_rank=1):
+    if MANUAL_LOGIN:
+        login_to_website_manual(driver, LOGIN_URL, LOGIN_WAIT_TIME)
+    else:
+        login_to_website(driver, LOGIN_URL, EMAIL, PASSWORD)
+    print('logged in ... ')
     soup = get_soup(HOSTNAME + '/leagues')
     next_url = ''
     for link in soup.find_all('a'):
         if link.get_text() == league_name:
             next_url = link['href']
             break
+    
+    name_team_df = make_name_team_pos_df() # make this request after logging in and it decides we are not a bot
     
     top_players = []
     round = 1
@@ -394,7 +423,10 @@ def get_top_players(name_team_df, num_players, save_interval = 500, visualize=Fa
 
 def get_all_private_league_names():
     leagues = []
-    login_to_website(driver, LOGIN_URL, EMAIL, PASSWORD)
+    if MANUAL_LOGIN:
+        login_to_website_manual(driver, LOGIN_URL, LOGIN_WAIT_TIME)
+    else:
+        login_to_website(driver, LOGIN_URL, EMAIL, PASSWORD)
     soup = get_soup(HOSTNAME + '/leagues')
     for div in soup.find_all('div'):
         if has_classes(div, ["Panel__StyledPanel-sc-1nmpshp-0"]):
@@ -408,11 +440,10 @@ def get_all_private_league_names():
 if __name__ == '__main__':
     import traceback
     try:
-        name_df = make_name_team_pos_df()
-        #get_top_players(name_df, 2, save_interval = 10, visualize=False)
-        get_top_players(name_df, 10000, save_interval = 250, visualize=False, start_at_rank=251)
+        #get_top_players(2, save_interval = 10, visualize=False)
         for pri_league in get_all_private_league_names():
-            get_top_players(name_df, 5000, save_interval = 250, visualize=False, league_name=pri_league)
+            get_top_players(5000, save_interval = 250, visualize=False, league_name=pri_league)
+        get_top_players(10000, save_interval = 250, visualize=False, start_at_rank=251)
     except Exception as e:
         tb = traceback.format_exc()
         print(tb)
