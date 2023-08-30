@@ -1,0 +1,31 @@
+so some sort of config where you can put the data folder 
+we want to have csv and the picture because then you can access them easily without code 
+want to have a garbage collector or load manager on the data oflder, and size of data entering , maybe config about your max sizing and stuff 
+once have csv, and a few good plots, can work to integrate with pyfit, which will involve 
+    getting paths and relative imports correct, 
+    organizing well, putting things in proper folders 
+    figuring out how to do the imports 
+    figuring out how we will develop in future in pyfit rather than inside fpl like this 
+    figuring out how to get the environment correct 
+
+once this can be imported, add a few more datasets and test with that. 
+now supervised learning is working, and you can try it with the current models for fpl 
+
+once we have done this, we can work to implement the RL side of things, which will be more work. Again, first in pyfit 
+Then we can try the current models with the full season model 
+
+finally, we can see if we can do an rl 
+
+
+INITIAL BUGS: 
+-------------
+the split to avoid outliers in the scatter is not working 
+we can just drop the other error plots, but look back into alternative statistics from cv, maybe confusion as well 
+want to be able to make plots for as a hyperparameter changes. Maybe this will have to be a full function with training. more like a cv plot. 
+    but this connects to the big thing i wanted, which was the hyperparameter searching. So we should have an integrated version as well. 
+
+WITH MEMORY CENTER;
+-------------------
+- safety features aka login which only i tell my family 
+- want to figure out how to host online 
+- want to figure out how to deploy on app store 

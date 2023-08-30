@@ -1,0 +1,248 @@
+2023-08-28 16:00:12,666 [INFO]: This is an info message.
+2023-08-28 16:00:12,667 [ERROR]: This is an error message.
+2023-08-28 16:20:59,283 [INFO]: This is an info message.
+2023-08-28 16:20:59,283 [ERROR]: This is an error message.
+2023-08-28 16:21:47,421 [INFO]: Training Accuracy: 0.9975
+2023-08-28 16:21:47,422 [INFO]: Training Time: 0.19466614723205566
+2023-08-28 16:21:47,422 [INFO]: Cross-Validation Mean Accuracy: 0.80375
+2023-08-28 16:21:47,423 [INFO]: Cross-Validation Std Accuracy: 0.029738443133425822
+2023-08-28 16:21:56,831 [INFO]: Training Accuracy: 1.0
+2023-08-28 16:21:56,832 [INFO]: Training Time: 3.310173273086548
+2023-08-28 16:21:56,833 [INFO]: Cross-Validation Mean Accuracy: 0.8474999999999999
+2023-08-28 16:21:56,847 [INFO]: Cross-Validation Std Accuracy: 0.029474565306378996
+2023-08-28 16:21:56,995 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-28 16:21:56,998 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-28 16:21:57,001 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-28 16:21:57,005 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-28 16:31:46,946 [INFO]: This is an info message.
+2023-08-28 16:31:46,947 [ERROR]: This is an error message.
+2023-08-28 16:32:32,365 [INFO]: Training Accuracy: 0.9975
+2023-08-28 16:32:32,366 [INFO]: Training Time: 0.06987667083740234
+2023-08-28 16:32:32,367 [INFO]: Cross-Validation Mean Accuracy: 0.8012499999999999
+2023-08-28 16:32:32,368 [INFO]: Cross-Validation Std Accuracy: 0.04565495591937417
+2023-08-28 16:32:39,498 [INFO]: Training Accuracy: 1.0
+2023-08-28 16:32:39,499 [INFO]: Training Time: 2.9160637855529785
+2023-08-28 16:32:39,500 [INFO]: Cross-Validation Mean Accuracy: 0.8474999999999999
+2023-08-28 16:32:39,501 [INFO]: Cross-Validation Std Accuracy: 0.029474565306378996
+2023-08-28 16:32:39,609 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-28 16:32:39,612 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-28 16:32:39,615 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-28 16:32:39,616 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-28 16:36:51,030 [INFO]: This is an info message.
+2023-08-28 16:36:51,030 [ERROR]: This is an error message.
+2023-08-28 16:37:41,324 [INFO]: Training Accuracy: 0.9975
+2023-08-28 16:37:41,325 [INFO]: Training Time: 0.0857388973236084
+2023-08-28 16:37:41,325 [INFO]: Cross-Validation Mean Accuracy: 0.78125
+2023-08-28 16:37:41,326 [INFO]: Cross-Validation Std Accuracy: 0.024999999999999977
+2023-08-28 16:37:53,595 [INFO]: Training Accuracy: 1.0
+2023-08-28 16:37:53,609 [INFO]: Training Time: 4.648066520690918
+2023-08-28 16:37:53,656 [INFO]: Cross-Validation Mean Accuracy: 0.8474999999999999
+2023-08-28 16:37:53,658 [INFO]: Cross-Validation Std Accuracy: 0.029474565306378996
+2023-08-28 16:37:53,836 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-28 16:37:53,843 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-28 16:37:53,856 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-28 16:37:53,861 [INFO]: Using categorical units to plot a list of strings that are all parsable as floats or dates. If these strings should be plotted as numbers, cast to the appropriate data type before plotting.
+2023-08-29 14:15:16,684 [INFO]: This is an info message.
+2023-08-29 14:15:16,685 [ERROR]: This is an error message.
+2023-08-29 14:16:07,729 [INFO]: Training Accuracy: 0.99
+2023-08-29 14:16:07,730 [INFO]: Training Time: 0.04577
+2023-08-29 14:16:07,731 [INFO]: Cross-Validation Mean Accuracy: 0.705
+2023-08-29 14:16:07,732 [INFO]: Cross-Validation Std Accuracy: 0.02284
+2023-08-29 14:16:08,532 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:16:08,533 [INFO]: Training Time: 0.1508
+2023-08-29 14:16:08,534 [INFO]: Cross-Validation Mean Accuracy: 0.82
+2023-08-29 14:16:08,534 [INFO]: Cross-Validation Std Accuracy: 0.02915
+2023-08-29 14:16:12,142 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:16:12,142 [INFO]: Training Time: 0.6768
+2023-08-29 14:16:12,143 [INFO]: Cross-Validation Mean Accuracy: 0.8762
+2023-08-29 14:16:12,144 [INFO]: Cross-Validation Std Accuracy: 0.02417
+2023-08-29 14:16:13,629 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:16:13,631 [INFO]: Training Time: 0.3821
+2023-08-29 14:16:13,631 [INFO]: Cross-Validation Mean Accuracy: 0.845
+2023-08-29 14:16:13,632 [INFO]: Cross-Validation Std Accuracy: 0.02889
+2023-08-29 14:24:32,969 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:24:32,971 [INFO]: Training Time: 91.74
+2023-08-29 14:24:32,972 [INFO]: Cross-Validation Mean Accuracy: 0.8587
+2023-08-29 14:24:32,977 [INFO]: Cross-Validation Std Accuracy: 0.03865
+2023-08-29 14:24:39,893 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:24:39,894 [INFO]: Training Time: 1.659
+2023-08-29 14:24:39,899 [INFO]: Cross-Validation Mean Accuracy: 0.8475
+2023-08-29 14:24:39,900 [INFO]: Cross-Validation Std Accuracy: 0.02947
+2023-08-29 14:24:47,072 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:24:47,073 [INFO]: Training Time: 1.388
+2023-08-29 14:24:47,075 [INFO]: Cross-Validation Mean Accuracy: 0.7925
+2023-08-29 14:24:47,076 [INFO]: Cross-Validation Std Accuracy: 0.03122
+2023-08-29 14:24:57,951 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:24:57,952 [INFO]: Training Time: 1.84
+2023-08-29 14:24:57,953 [INFO]: Cross-Validation Mean Accuracy: 0.68
+2023-08-29 14:24:57,954 [INFO]: Cross-Validation Std Accuracy: 0.0656
+2023-08-29 14:25:55,609 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:25:55,610 [INFO]: Training Time: 9.057
+2023-08-29 14:25:55,611 [INFO]: Cross-Validation Mean Accuracy: 0.8288
+2023-08-29 14:25:55,611 [INFO]: Cross-Validation Std Accuracy: 0.0346
+2023-08-29 14:27:54,676 [INFO]: This is an info message.
+2023-08-29 14:27:54,676 [ERROR]: This is an error message.
+2023-08-29 14:28:48,541 [INFO]: Training Accuracy: 0.9788
+2023-08-29 14:28:48,543 [INFO]: Training Time: 0.04998
+2023-08-29 14:28:48,545 [INFO]: Cross-Validation Mean Accuracy: 0.7075
+2023-08-29 14:28:48,546 [INFO]: Cross-Validation Std Accuracy: 0.03566
+2023-08-29 14:28:49,668 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:28:49,670 [INFO]: Training Time: 0.17
+2023-08-29 14:28:49,674 [INFO]: Cross-Validation Mean Accuracy: 0.835
+2023-08-29 14:28:49,675 [INFO]: Cross-Validation Std Accuracy: 0.0258
+2023-08-29 14:28:53,971 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:28:53,972 [INFO]: Training Time: 0.8987
+2023-08-29 14:28:53,973 [INFO]: Cross-Validation Mean Accuracy: 0.8788
+2023-08-29 14:28:53,973 [INFO]: Cross-Validation Std Accuracy: 0.02
+2023-08-29 14:28:58,859 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:28:58,860 [INFO]: Training Time: 0.3717
+2023-08-29 14:28:58,861 [INFO]: Cross-Validation Mean Accuracy: 0.845
+2023-08-29 14:28:58,862 [INFO]: Cross-Validation Std Accuracy: 0.02889
+2023-08-29 14:29:08,020 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:29:08,021 [INFO]: Training Time: 1.938
+2023-08-29 14:29:08,023 [INFO]: Cross-Validation Mean Accuracy: 0.8475
+2023-08-29 14:29:08,030 [INFO]: Cross-Validation Std Accuracy: 0.02947
+2023-08-29 14:29:16,244 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:29:16,245 [INFO]: Training Time: 2.305
+2023-08-29 14:29:16,246 [INFO]: Cross-Validation Mean Accuracy: 0.795
+2023-08-29 14:29:16,250 [INFO]: Cross-Validation Std Accuracy: 0.01992
+2023-08-29 14:29:31,361 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:29:31,362 [INFO]: Training Time: 1.585
+2023-08-29 14:29:31,363 [INFO]: Cross-Validation Mean Accuracy: 0.7288
+2023-08-29 14:29:31,364 [INFO]: Cross-Validation Std Accuracy: 0.06621
+2023-08-29 14:30:39,892 [INFO]: Training Accuracy: 1.0
+2023-08-29 14:30:39,895 [INFO]: Training Time: 15.21
+2023-08-29 14:30:39,898 [INFO]: Cross-Validation Mean Accuracy: 0.8162
+2023-08-29 14:30:39,903 [INFO]: Cross-Validation Std Accuracy: 0.02151
+2023-08-29 21:13:29,533 [INFO]: This is an info message.
+2023-08-29 21:13:29,535 [ERROR]: This is an error message.
+2023-08-29 21:15:13,571 [INFO]: Training Accuracy: 0.9862
+2023-08-29 21:15:13,574 [INFO]: Training Time: 0.5219
+2023-08-29 21:15:13,576 [INFO]: Cross-Validation Mean Accuracy: 0.74
+2023-08-29 21:15:13,578 [INFO]: Cross-Validation Std Accuracy: 0.02947
+2023-08-29 21:15:13,585 [INFO]: 
+
+2023-08-29 21:15:15,641 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:15:15,643 [INFO]: Training Time: 0.3645
+2023-08-29 21:15:15,645 [INFO]: Cross-Validation Mean Accuracy: 0.8462
+2023-08-29 21:15:15,647 [INFO]: Cross-Validation Std Accuracy: 0.02
+2023-08-29 21:15:15,648 [INFO]: 
+
+2023-08-29 21:15:24,367 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:15:24,369 [INFO]: Training Time: 1.649
+2023-08-29 21:15:24,370 [INFO]: Cross-Validation Mean Accuracy: 0.8738
+2023-08-29 21:15:24,370 [INFO]: Cross-Validation Std Accuracy: 0.02031
+2023-08-29 21:15:24,371 [INFO]: 
+
+2023-08-29 21:16:19,627 [INFO]: This is an info message.
+2023-08-29 21:16:19,628 [ERROR]: This is an error message.
+2023-08-29 21:17:58,474 [INFO]: Training Accuracy: 0.9812
+2023-08-29 21:17:58,476 [INFO]: Training Time: 0.5385
+2023-08-29 21:17:58,478 [INFO]: Cross-Validation Mean Accuracy: 0.7262
+2023-08-29 21:17:58,479 [INFO]: Cross-Validation Std Accuracy: 0.03147
+2023-08-29 21:17:58,490 [INFO]: 
+
+2023-08-29 21:17:59,833 [INFO]: Training Accuracy: 0.9988
+2023-08-29 21:17:59,835 [INFO]: Training Time: 0.2033
+2023-08-29 21:17:59,836 [INFO]: Cross-Validation Mean Accuracy: 0.8312
+2023-08-29 21:17:59,838 [INFO]: Cross-Validation Std Accuracy: 0.01768
+2023-08-29 21:17:59,839 [INFO]: 
+
+2023-08-29 21:18:08,435 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:18:08,438 [INFO]: Training Time: 1.385
+2023-08-29 21:18:08,440 [INFO]: Cross-Validation Mean Accuracy: 0.8712
+2023-08-29 21:18:08,444 [INFO]: Cross-Validation Std Accuracy: 0.0109
+2023-08-29 21:18:08,446 [INFO]: 
+
+2023-08-29 21:18:10,923 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:18:10,924 [INFO]: Training Time: 0.8088
+2023-08-29 21:18:10,925 [INFO]: Cross-Validation Mean Accuracy: 0.845
+2023-08-29 21:18:10,926 [INFO]: Cross-Validation Std Accuracy: 0.02889
+2023-08-29 21:18:10,927 [INFO]: 
+
+2023-08-29 21:18:17,105 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:18:17,106 [INFO]: Training Time: 1.552
+2023-08-29 21:18:17,106 [INFO]: Cross-Validation Mean Accuracy: 0.8475
+2023-08-29 21:18:17,107 [INFO]: Cross-Validation Std Accuracy: 0.02947
+2023-08-29 21:18:17,108 [INFO]: 
+
+2023-08-29 21:18:22,780 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:18:22,781 [INFO]: Training Time: 1.178
+2023-08-29 21:18:22,782 [INFO]: Cross-Validation Mean Accuracy: 0.7813
+2023-08-29 21:18:22,782 [INFO]: Cross-Validation Std Accuracy: 0.05047
+2023-08-29 21:18:22,783 [INFO]: 
+
+2023-08-29 21:18:32,756 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:18:32,756 [INFO]: Training Time: 2.342
+2023-08-29 21:18:32,758 [INFO]: Cross-Validation Mean Accuracy: 0.6825
+2023-08-29 21:18:32,759 [INFO]: Cross-Validation Std Accuracy: 0.06595
+2023-08-29 21:18:32,759 [INFO]: 
+
+2023-08-29 21:19:39,056 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:19:39,057 [INFO]: Training Time: 8.628
+2023-08-29 21:19:39,058 [INFO]: Cross-Validation Mean Accuracy: 0.8312
+2023-08-29 21:19:39,059 [INFO]: Cross-Validation Std Accuracy: 0.03812
+2023-08-29 21:19:39,061 [INFO]: 
+
+2023-08-29 21:48:34,456 [INFO]: This is an info message.
+2023-08-29 21:48:34,457 [ERROR]: This is an error message.
+2023-08-29 21:50:08,577 [INFO]: Training Accuracy: 0.9738
+2023-08-29 21:50:08,580 [INFO]: Training Time: 0.06506
+2023-08-29 21:50:08,581 [INFO]: Cross-Validation Mean Accuracy: 0.72
+2023-08-29 21:50:08,583 [INFO]: Cross-Validation Std Accuracy: 0.02417
+2023-08-29 21:50:08,584 [INFO]: 
+
+2023-08-29 21:50:10,436 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:50:10,437 [INFO]: Training Time: 0.3134
+2023-08-29 21:50:10,438 [INFO]: Cross-Validation Mean Accuracy: 0.8338
+2023-08-29 21:50:10,439 [INFO]: Cross-Validation Std Accuracy: 0.04194
+2023-08-29 21:50:10,439 [INFO]: 
+
+2023-08-29 21:50:18,397 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:50:18,401 [INFO]: Training Time: 1.173
+2023-08-29 21:50:18,403 [INFO]: Cross-Validation Mean Accuracy: 0.88
+2023-08-29 21:50:18,410 [INFO]: Cross-Validation Std Accuracy: 0.02417
+2023-08-29 21:50:18,413 [INFO]: 
+
+2023-08-29 21:50:36,524 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:50:36,525 [INFO]: Training Time: 3.799
+2023-08-29 21:50:36,525 [INFO]: Cross-Validation Mean Accuracy: 0.88
+2023-08-29 21:50:36,526 [INFO]: Cross-Validation Std Accuracy: 0.02318
+2023-08-29 21:50:36,526 [INFO]: 
+
+2023-08-29 21:50:39,262 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:50:39,263 [INFO]: Training Time: 1.14
+2023-08-29 21:50:39,264 [INFO]: Cross-Validation Mean Accuracy: 0.845
+2023-08-29 21:50:39,265 [INFO]: Cross-Validation Std Accuracy: 0.02889
+2023-08-29 21:50:39,266 [INFO]: 
+
+2023-08-29 21:50:49,204 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:50:49,205 [INFO]: Training Time: 1.229
+2023-08-29 21:50:49,206 [INFO]: Cross-Validation Mean Accuracy: 0.8475
+2023-08-29 21:50:49,207 [INFO]: Cross-Validation Std Accuracy: 0.02947
+2023-08-29 21:50:49,208 [INFO]: 
+
+2023-08-29 21:50:57,230 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:50:57,231 [INFO]: Training Time: 1.992
+2023-08-29 21:50:57,235 [INFO]: Cross-Validation Mean Accuracy: 0.8212
+2023-08-29 21:50:57,238 [INFO]: Cross-Validation Std Accuracy: 0.02921
+2023-08-29 21:50:57,248 [INFO]: 
+
+2023-08-29 21:51:20,593 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:51:20,595 [INFO]: Training Time: 3.625
+2023-08-29 21:51:20,596 [INFO]: Cross-Validation Mean Accuracy: 0.7038
+2023-08-29 21:51:20,597 [INFO]: Cross-Validation Std Accuracy: 0.05148
+2023-08-29 21:51:20,599 [INFO]: 
+
+2023-08-29 21:52:58,132 [INFO]: Training Accuracy: 1.0
+2023-08-29 21:52:58,134 [INFO]: Training Time: 12.19
+2023-08-29 21:52:58,135 [INFO]: Cross-Validation Mean Accuracy: 0.8412
+2023-08-29 21:52:58,136 [INFO]: Cross-Validation Std Accuracy: 0.02114
+2023-08-29 21:52:58,137 [INFO]: 
+
+2023-08-29 21:53:30,808 [INFO]: Training Accuracy: 0.9975
+2023-08-29 21:53:30,809 [INFO]: Training Time: 16.08
+2023-08-29 21:53:30,810 [INFO]: Cross-Validation Mean Accuracy: 0.7412
+2023-08-29 21:53:30,811 [INFO]: Cross-Validation Std Accuracy: 0.02867
+2023-08-29 21:53:30,812 [INFO]: 
+
