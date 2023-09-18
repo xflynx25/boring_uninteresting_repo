@@ -47,7 +47,7 @@ VERBOSITY = {
     'Accountant_Main_Loop_Function_Notifiers': True, 
     'Previous_Points_Calculation_Info': False, 
     'squad': True,
-    'odds': False,
+    'odds': True,
     'odds_important': True,
     'playercounter': False,
     'brain': False,

@@ -279,6 +279,7 @@ class FPL_AI():
     '''update all the tables'''        
     def make_moves(self):
         print('started ', self.email)
+        print('the suites are : ', self.field_suite_tms)
 
         try:
             IGNORE_GWKS = [] # func_to_strategically_ignore_weeks ex) for freehit & bench_boost combo or wildcard
@@ -587,8 +588,13 @@ def run_orders():
             print(f'User {user} exists')
             ai.make_moves()
         except: 
-            print("User Doesn't Exist")
+            print("User Doesn't Exist ... or failure in the make moves function")
 
 if __name__ == '__main__':
     #from private_versions.Personalities import personalities_to_run
     run_orders()
+
+
+
+
+    

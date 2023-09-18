@@ -258,6 +258,9 @@ def update_odds_df(fixtures_df, current_gw, patch=False):
         print('IMPLEMENT')
         print('Actually, hard to implement because we can"t know if we need odds, so this will need to be in conjunction with the clutch odds game determination system')
 
+    if VERBOSITY['Accountant_Main_Loop_Function_Notifiers']:
+        print('leaving odds df, goodbye :)')
+
     return final_odds
         
 
@@ -507,6 +510,10 @@ def current_week_full_stats(season, form_lengths, forward_pred_lengths, ignore_g
     odds_df = update_odds_df(fixtures_df, current_gw, patch=False) # set patch to true if there have been canceled games this season screwing up the odds
 
     raw_players = update_player_previous(season, current_gw) 
+    
+    if VERBOSITY['Accountant_Main_Loop_Function_Notifiers']:
+        print('finished raw_tables')
+        
     raw_players = update_player_current(raw_players, current_gw)
     update_team_previous(current_gw, fixtures_df, odds_df)
     update_team_current(current_gw, fixtures_df, odds_df)

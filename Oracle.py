@@ -143,6 +143,7 @@ def this_week_predictions(this_week_player_stats, model_dict, gw, length):
 def make_model_dict(gw, model_suite, preloaded=False, model_folder = 'Current'): 
     chdir(DROPBOX_PATH + f"models/{model_folder}/" + model_suite)
     files = listdir()
+    print('files are ', files)
 
     print('model suite is : ', model_suite)
 
@@ -157,6 +158,7 @@ def make_model_dict(gw, model_suite, preloaded=False, model_folder = 'Current'):
                 print('loading model ', filename)
                 model, feature_names  = load_model(filename)
             model_dict[key] = (model, feature_names)
+            print('loaded a useful model')
         
     return model_dict
 
