@@ -46,13 +46,15 @@
 4) ***History*** </br>
     -- 2020-21: 718,084 / 8,240,321 (**8.714%**)</br>
     -- 2021-22: bugs</br>
-    -- 2022-23 (ongoing): 1,791,779 / 11,312,228 (**15.839%**) [2nd chance league, bugs 1st half of season. ]
+    -- 2022-23: bugs 1st half of the season, but ~10% overall in the 2nd chance league</br> 
+    -- 2023-24(ongoing, as of 9/17/23): 789,876 / 9,875,359 (**7.998%**) 
 
 
 5) ***Status*** </br>
 
     -- Working to get things more seemlessly integrated for distribution <br/>
     -- Next season to introduce Brutus <br/>
+    ---- Currently backtesting different models
     -- Along with to see how well a full season of this bot can do (never ran a full season live, starting late is huge disadvantage due to the market)<br/>
 
 ---
