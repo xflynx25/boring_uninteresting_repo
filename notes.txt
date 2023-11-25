@@ -38,3 +38,57 @@ FEATURE: the user should need to read only a text file. It should paragraph itse
 2/3/22
 ------
 Overseer will only run once per day unless last 2 days in which case will continually do pick team, nice for debugging but we don't really want this behavior
+
+9/22/23
+-------
+* considering the cdf is 90 at 5 pts, but we have a lot of data, maybe a multilevel model would work well. So I'm thinking
+    a classifier into probabilities for the type of week they will have, and within that, we have regression models 
+    sort of like a bayesian thing. Let's keep this in the back of mind for right now. 
+
+* for pyfit, we will probably rearchitect this many times. I think it will end up being important that the classes are well-defined. 
+    Dataset. Model. Evaluator. Wrapper that allows you to manipulate the data, pass into dataset to get visuals and 
+    preprocessing/univariate/bivariate/multivariate analyses - and do data cleaning, row processing & such & kick it back into 
+    dataset until we are happy with what we are at. Then we need to do higher order things, like data augmentation, & throw it 
+    back into the dataset processer. When we start to get happy with things, we can start trying models, which will have the cv, 
+    confusion matrix, and all that jazz inside. So maybe for now just Wrapper -> (calls) Augmenters, Datasets, Models 
+    & when we have a model (self.raw_dataset, self.augmentor), we can later throw it into an evaluator object 
+    * Focus on making more clear interfaces. But at the same time, a little bit each day, will go a long way. 
+
+* Inbalanced Dataset (50% zeros), some ideas: 
+    - resampling to balance dataset 
+        (SMOTE (not here though, for classification & with smooth decision boundary))
+        Random oversampling
+        ADASYN - samples based on how surrounded by majority class, good if they are nearby, although still would amplify noise if its an outlier
+    - custom loss function, to penalize missing high scorers more 
+    - cascading models, with ordinal classifier, and then regional regressors
+    - changing it into an anomoly detection problem can be useful 
+    - Balanced Random Forests - bootstrap with intentionally balanced classes 
+
+* Ideas from algorithmic trading 
+    - Stop-Loss = methods for minimizing big downside, so maybe we could make a risk model & not take people so high
+        - or similarly, you diversify the team, with sure bets and wild cards (still with risk model)
+    - walk-forward optimization == constantly optimizing the models with the latest data 
+        -- I'm thinking I might have to do some complicated looking at how in-season data differs from previous season 
+    - Real-Time monitoring == always be on the lookout for how this season differs from previous. Maybe compare score distributions, 
+        and if soemthing is getting out of the ordinary, there should be things in place. 
+    - Sharpe Ratio == Risk adjusted returns. I am already kind of doing this with my value-vector
+    - Monte Carlo if I can figure out a good way to simulate ... 
+    - Drawdown - some peak to trough, and peak to reaching again metrics basicaly telling you about once you drop from peak 
+        what will happen next. Could be some interesting analysis with these. 
+        2. This is also making me think that some longer-range dependencies could be interesting ... 
+
+* simulate CV error by feature selection before CV 
+
+* sensitivity analysis
+
+
+
+TODO: 
+* red card / injury status not seeming to work for N1 at least, Nicholas ajckson is still being put in starting lineup and saying 5.41 expected even though he is suspended. 
+    * so we predict score as if not injured, which is good for starting, because we want to start if they start and play well, but we 
+        ... are maybe being hurt in that we don't realize the next1 is strong by transfering such people out, so we kind of need another scoring which takes
+        ... into account if they are hurt. Maybe the best solution for now is to actually discount their next1 scores. If they are somewhat hurt they prob won't be 
+        ... as good anyways. and the percentages are getting better. 
+    * it is a little more complicated, what we do now is get multipliers for the 6 games, based on estimating how many games they miss, so not direct carry over (but could be calculated)
+    * would help the team a bit this year, in encouraging to transfer out injured players, but overall will not be gamechanger, so maybe shouldn't waste time on it. 
+* folder is stored in the personalities.json, so if you change computers, then either need to manually or programmatically change 

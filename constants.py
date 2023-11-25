@@ -1,6 +1,6 @@
 # page containing necessary constants for import across different files
 from private_versions.private_constants import DROPBOX_PATH, RAPID_API_KEY, WEBDRIVER_PATH, \
-    WEBDRIVER_BINARY_LOC
+    WEBDRIVER_BINARY_LOC 
 
 # FPL SEASON INFORMATION
 CENTURY = 20
@@ -50,7 +50,7 @@ VERBOSITY = {
     'odds': True,
     'odds_important': True,
     'playercounter': False,
-    'brain': False,
+    'brain': True,
     'brain_important': True, 
 }
 SCOREBOARD_VERBOSITY = 0.1

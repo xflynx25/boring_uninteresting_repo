@@ -24,8 +24,57 @@ we can just drop the other error plots, but look back into alternative statistic
 want to be able to make plots for as a hyperparameter changes. Maybe this will have to be a full function with training. more like a cv plot. 
     but this connects to the big thing i wanted, which was the hyperparameter searching. So we should have an integrated version as well. 
 
-WITH MEMORY CENTER;
--------------------
-- safety features aka login which only i tell my family 
-- want to figure out how to host online 
-- want to figure out how to deploy on app store 
+
+
+GENERIC INFERENCE TOOLKIT
+-------------------------
+@Params: Start with a csv which has your train and test data, knowledge of the train columns, and test columns 
+
+1. Understand your data 
+- Distribution of the Y's 
+- Distribution of the X's, of a top n with high R^2 with the Ys
+-- for this one, histogram of the X, and the plot of X vs Y 
+
+2. What sort of loss do you want? 
+
+3. What sort of visualizations do you want
+- type 1 vs type 2 errors, given inputs on the boundry (turns regression into a classification)
+- histograms of the Y, and the pred Y next to each other (maybe log plot)
+
+
+4. What sort of statistics do we want reported on our report.csv 
+
+5. What models do we want to look at 
+
+6. What are our model assumptions, how can we see if they are valid. 
+
+7. Data transformations, 
+- dealing with categorical
+- shuffling, augmentation techniques
+
+8. Training and Validation
+- CrossVal
+- Forward/Backward Selection
+- Sampling method 
+- 
+
+9. Hypothesis Testing
+
+10. Some generic NULL models to baseline against
+
+- dataloaders: for training on large data, for shuffling, augmentation, sampling strategies
+
+
+
+
+@Return: The model we want to use
+
+
+
+QQQQQQQs
+--------
+- how can i make a setup that for rf, lr, nn all will take the same input and return output. This even means if there is a subset of the variables. 
+    So then we must 
+ANS = make a BaseModel class - with init, fit and predict. Also save and load, for grabbing from the package. 
+    the great thing about this class, is we can allow you to do data augmentation, or transformation of the inputs, on a per-model basis 
+        for example with categorical variables, how do you want to deal with them 

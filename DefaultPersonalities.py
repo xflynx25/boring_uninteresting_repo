@@ -86,7 +86,12 @@ DEFAULT_PERSONALITY_LOOKUP = {
 }
 DEFAULT_PERSONALITY_NAMES = list(DEFAULT_PERSONALITY_LOOKUP.keys())
 
+
+print('the dropbox path in defaultpers is  ', DROPBOX_PATH)
+
 def create_default_personality(season, folder, personality_key):
+    print(' folder is ', folder)
+
     return {**{
     'folder': folder, 
     'season': season

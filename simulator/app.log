@@ -246,3 +246,15 @@
 2023-08-29 21:53:30,811 [INFO]: Cross-Validation Std Accuracy: 0.02867
 2023-08-29 21:53:30,812 [INFO]: 
 
+2023-09-21 15:49:04,727 [INFO]: This is an info message.
+2023-09-21 15:49:04,728 [ERROR]: This is an error message.
+2023-09-21 15:49:43,747 [INFO]: Note: NumExpr detected 10 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
+2023-09-21 15:49:43,748 [INFO]: NumExpr defaulting to 8 threads.
+2023-09-25 01:18:06,468 [INFO]: This is an info message.
+2023-09-25 01:18:06,470 [ERROR]: This is an error message.
+2023-09-25 01:18:14,647 [INFO]: Note: NumExpr detected 10 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
+2023-09-25 01:18:14,648 [INFO]: NumExpr defaulting to 8 threads.
+2023-09-25 01:25:20,586 [INFO]: This is an info message.
+2023-09-25 01:25:20,586 [ERROR]: This is an error message.
+2023-09-25 01:25:21,172 [INFO]: Note: NumExpr detected 10 cores but "NUMEXPR_MAX_THREADS" not set, so enforcing safe limit of 8.
+2023-09-25 01:25:21,172 [INFO]: NumExpr defaulting to 8 threads.

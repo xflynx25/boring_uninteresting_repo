@@ -131,6 +131,8 @@ Athena_v10p = {
         'early_transfer_evolution_length': 20, #number is gw when revert to normal
 }
 
+
+print('the dropbox path in personalities is  ', DROPBOX_PATH)
 Athena_v10a22 = create_default_personality('2022-23', DROPBOX_PATH + "Athena-v1.2gw22/", "Athena-v1.2p")
 Athena_v10a23 = create_default_personality('2022-23', DROPBOX_PATH + "Athena-v1.2gw23/", "Athena-v1.2p")
 

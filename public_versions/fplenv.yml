@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - defaults
 dependencies:
+  - python=3.9
   - aiohttp
   - beautifulsoup4
   - jellyfish
@@ -15,8 +16,8 @@ dependencies:
   - pandoc
   - pandocfilters
   - scikit-image
-  - scikit-learn
+  - scikit-learn=0.24.2
   - scipy
   - seaborn
+  - selenium
   - tornado
-prefix: <INSERT anaconda-filepath>

@@ -11,3 +11,6 @@ private_versions/**
 team_bot*
 historicalPersonalitiesDump.py
 FormatConverter.py
+*.png
+*.csv
+
