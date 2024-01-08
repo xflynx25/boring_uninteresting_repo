@@ -42,6 +42,10 @@
     not make a transfer will take just a couple minutes. <br/>
     -- Currently it is not 100% automated. Playing chips through amosbastian FPL_Remote no longer works due to captcha, so humans will need to check csv logging files daily to see whether they need to make a move, and if so, to check the move logging files. 
 
+3.5) ***Notable (legendary) Bugs*** </br>
+    - Queen's Death (Sep 2022) : when the queen died, there was a gameweek that had nothing played, where I discovered the implicit assumption that all gw would have at least one game played <br/>
+    - Heart Attack (Dec 2023) : the bournemouth vs luton game was taken back after the fact, so it was not recorded originally as a blank and some information was there, but other fields could not be filled in. This caused all teams playing them in the next 6 weeks to have 0 predicted values, likely because of some nans. 
+
 
 4) ***History*** </br>
     -- 2020-21: 718,084 / 8,240,321 (**8.714%**)</br>

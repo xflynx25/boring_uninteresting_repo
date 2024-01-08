@@ -40,15 +40,16 @@ def print_transfer(name_df, chosen_transfer):
 
 class FPL_AI():
 
-    def __init__(self, season, login_credentials, folder, allowed_healths, max_hit, bench_factors, value_vector,\
+    def __init__(self, season, login_credentials, folder_end, allowed_healths, max_hit, bench_factors, value_vector,\
         num_options, quality_factor, hesitancy_dict, min_delta_dict, earliest_chip_weeks, chip_threshold_construction, chip_threshold_tailoffs,\
-        wildcard_method, wildcard_model_path, player_protection, field_model_suites, keeper_model_suites, bad_players, nerf_info,\
+        wildcard_method, wildcard_model_path_end, player_protection, field_model_suites, keeper_model_suites, bad_players, nerf_info,\
         force_remake, when_transfer, early_transfer_aggressiveness, early_transfer_evolution_length):
+        print('made into the init func')
         self.season = season
         self.email = login_credentials[0] #str
         self.password = login_credentials[1] #str
         self.team_id = login_credentials[2] #int
-        self.folder = folder #str filepath, with / at the end
+        self.folder = constants.DROPBOX_PATH + folder_end #str filepath, with / at the end
         self.allowed_healths = allowed_healths #list - i.e.['a','d']
         self.max_hit = max_hit #int, positive
         self.bench_factor = bench_factors[0] #float - 0-1
@@ -62,7 +63,7 @@ class FPL_AI():
         self.chip_threshold_construction = chip_threshold_construction #{chip: (%of top, std_deviations, choice_method)} #where choice method is either 'max', 'min', 'avg'
         self.chip_threshold_tailoffs = chip_threshold_tailoffs #float - 0-1, .2 tails off around gw34, .1 around gw30, .05 around gw20, slow tailoff
         self.wildcard_method = wildcard_method
-        self.wildcard_model_path = wildcard_model_path
+        self.wildcard_model_path = constants.DROPBOX_PATH + wildcard_model_path_end
         self.player_protection = player_protection #int, you will not sell any player in the top __ predicted for these next few weeks.
         self.field_suite_tms = field_model_suites #list of df with the season long data for tms
         self.keeper_suite_tms = keeper_model_suites #list of df with the season long data for tms
@@ -314,6 +315,7 @@ class FPL_AI():
                 for elemcheck in (12, 58, 103, 558):
                     val = price_df.loc[price_df['element']==elemcheck]['value'].to_numpy()[0]
                     print(elemcheck, ' = ', val)
+                print('got human-inputs-players')
                 print(human_inputs_players)
                 human_inputs_players.loc[:, 'current_value'] = human_inputs_players.apply(lambda row: \
                     price_df.loc[price_df['element']==row['player']]['value'].to_numpy()[0], axis=1)
@@ -595,6 +597,3 @@ if __name__ == '__main__':
     run_orders()
 
 
-
-
-    
